@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.17.0 - Production Deployment Readiness
+
+- Added `/api/health` readiness endpoint that verifies application and database availability.
+- Added Dockerfile for building and running the Next.js application in production mode.
+- Added `docker-compose.prod.yml` with app, PostgreSQL, Nginx reverse proxy, health checks, persistent database volume, and persistent upload volumes.
+- Added Nginx proxy configuration with forwarded headers and 10MB upload limit.
+- Added `.env.production.example` for production deployment values.
+- Updated production readiness documentation with Docker Compose rollout, database preparation, health checks, and HTTP/IP staging cookie notes.
+
 ## 0.15.15 - Payment Ledger Module
 
 - Added payment ledger schema with transaction type, method, posted/voided status, references, notes, recorded-by, and reservation linkage.

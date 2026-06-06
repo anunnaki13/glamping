@@ -1,0 +1,21 @@
+.git
+.github
+.next
+node_modules
+coverage
+playwright-report
+test-results
+.env
+.env*.local
+.next-dev.log
+.next-dev.pid
+*.tsbuildinfo
+npm-debug.log*
+Dockerfile
+docker-compose*.yml
+public/uploads/catalog
+public/uploads/units
+Smart_Glamping_Ecosystem_Master_Blueprint_v1.pdf
+ChatGPT Image*.png
+styleupdate
+test-results

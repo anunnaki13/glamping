@@ -10,6 +10,8 @@ This checklist captures the minimum checks before Smart Glamping OS is used for 
 - Keep `OPENROUTER_API_KEY` empty unless AI features are intentionally enabled.
 - Confirm `OPENROUTER_ENABLED`, `OPENROUTER_PRIMARY_MODEL`, and fallback model settings before enabling AI.
 - Do not reuse the seeded `password123` credential in production.
+- Use `.env.production.example` as the deployment template for Docker Compose.
+- For temporary HTTP/IP staging, session cookies intentionally omit `Secure`; behind HTTPS or an HTTPS proxy they remain secure.
 
 ## Database
 
@@ -44,6 +46,48 @@ For local E2E, keep the dev server running first:
 npm run dev
 npm run test:e2e
 ```
+
+## Docker Compose Production Preview
+
+The production stack includes:
+
+- `app`: Next.js production server
+- `postgres`: PostgreSQL 17 with persistent volume
+- `nginx`: reverse proxy on `HTTP_PORT`
+
+First deploy:
+
+```bash
+cp .env.production.example .env.production
+nano .env.production
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml exec app npm run db:push
+docker compose --env-file .env.production -f docker-compose.prod.yml exec app npm run db:seed
+curl http://localhost/api/health
+```
+
+Routine restart:
+
+```bash
+git pull
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+```
+
+Logs:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f app
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f nginx
+```
+
+Health endpoint:
+
+```text
+/api/health
+```
+
+The endpoint returns `200` only when the app can reach the database.
 
 ## Go-Live Smoke
 

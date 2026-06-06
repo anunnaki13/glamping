@@ -67,6 +67,34 @@ See `docs/PRODUCTION_READINESS.md` for the go-live checklist.
 
 GitHub Actions CI runs typecheck, lint, build, database seed, and Playwright E2E against a PostgreSQL service.
 
+## Production Docker Preview
+
+Copy the production environment template and fill the secrets:
+
+```bash
+cp .env.production.example .env.production
+nano .env.production
+```
+
+Start the production stack:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+```
+
+Prepare the database on first deploy:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml exec app npm run db:push
+docker compose --env-file .env.production -f docker-compose.prod.yml exec app npm run db:seed
+```
+
+Health check:
+
+```bash
+curl http://localhost/api/health
+```
+
 ## Demo Credentials
 
 Development-only display on the login screen:
