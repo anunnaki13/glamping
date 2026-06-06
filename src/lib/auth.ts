@@ -50,11 +50,11 @@ export async function getCurrentSession() {
   return verifySessionToken(cookieStore.get(AUTH_COOKIE_NAME)?.value);
 }
 
-export function getSessionCookieOptions(remember = false) {
+export function getSessionCookieOptions(remember = false, secure = process.env.NODE_ENV === "production") {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     path: "/",
     maxAge: remember ? REMEMBER_SESSION_MAX_AGE : DEFAULT_SESSION_MAX_AGE,
   };

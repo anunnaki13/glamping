@@ -68,7 +68,7 @@ export async function POST(request: Request) {
           message: "Login berhasil.",
         });
 
-    response.cookies.set(AUTH_COOKIE_NAME, token, getSessionCookieOptions(parsed.data.remember));
+    response.cookies.set(AUTH_COOKIE_NAME, token, getSessionCookieOptions(parsed.data.remember, isSecureRequest(request)));
 
     await prisma.activityLog.create({
       data: {
@@ -129,4 +129,14 @@ function getRedirectUrl(request: Request, path: string) {
   }
 
   return new URL(path, `${protocol}://${host}`);
+}
+
+function isSecureRequest(request: Request) {
+  const forwardedProtocol = request.headers.get("x-forwarded-proto");
+
+  if (forwardedProtocol) {
+    return forwardedProtocol.split(",")[0]?.trim() === "https";
+  }
+
+  return new URL(request.url).protocol === "https:";
 }
