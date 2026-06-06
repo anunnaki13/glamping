@@ -358,20 +358,25 @@ model ServiceRequest {
 }
 
 model PosItem {
-  id          String      @id @default(cuid())
-  name        String
-  category    PosCategory
-  price       Decimal     @db.Decimal(14, 2)
-  description String?
-  photoUrl    String?
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  name            String
+  category        PosCategory
+  price           Decimal     @db.Decimal(14, 2)
+  description     String?
+  photoUrl        String?
+  isActive        Boolean     @default(true)
+  isAvailable     Boolean     @default(true)
+  leadTimeMinutes Int         @default(0)
+  dailyCapacity   Int?
+  slotLabel       String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   orderItems OrderItem[]
 
   @@index([category])
   @@index([isActive])
+  @@index([isAvailable])
 }
 
 model Order {

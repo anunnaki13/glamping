@@ -25,6 +25,10 @@ const catalogItemSchema = z.object({
   description: z.string().trim().max(600).optional(),
   photoUrl: optionalImageReferenceSchema,
   isActive: z.boolean(),
+  isAvailable: z.boolean(),
+  leadTimeMinutes: z.coerce.number().int().min(0).max(10_080).default(0),
+  dailyCapacity: z.coerce.number().int().min(1).max(10_000).optional().or(z.literal("")),
+  slotLabel: z.string().trim().max(80).optional(),
 });
 
 function formDataObject(formData: FormData) {
@@ -43,6 +47,7 @@ export async function createCatalogItemAction(formData: FormData) {
   const parsedPayload = catalogItemSchema.safeParse({
     ...formDataObject(formData),
     isActive: formData.get("isActive") === "on",
+    isAvailable: formData.get("isAvailable") === "on",
   });
 
   if (!parsedPayload.success) {
@@ -80,6 +85,10 @@ export async function createCatalogItemAction(formData: FormData) {
       description: parsed.description || null,
       photoUrl,
       isActive: parsed.isActive,
+      isAvailable: parsed.isAvailable,
+      leadTimeMinutes: parsed.leadTimeMinutes,
+      dailyCapacity: parsed.dailyCapacity === "" ? null : parsed.dailyCapacity ?? null,
+      slotLabel: parsed.slotLabel || null,
     },
   });
 
@@ -102,6 +111,7 @@ export async function updateCatalogItemAction(itemId: string, formData: FormData
   const parsedPayload = catalogItemSchema.safeParse({
     ...formDataObject(formData),
     isActive: formData.get("isActive") === "on",
+    isAvailable: formData.get("isAvailable") === "on",
   });
 
   if (!parsedPayload.success) {
@@ -149,6 +159,10 @@ export async function updateCatalogItemAction(itemId: string, formData: FormData
       description: parsed.description || null,
       photoUrl,
       isActive: parsed.isActive,
+      isAvailable: parsed.isAvailable,
+      leadTimeMinutes: parsed.leadTimeMinutes,
+      dailyCapacity: parsed.dailyCapacity === "" ? null : parsed.dailyCapacity ?? null,
+      slotLabel: parsed.slotLabel || null,
     },
   });
 

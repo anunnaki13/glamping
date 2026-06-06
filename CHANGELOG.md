@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18.0 - POS Catalog Availability Controls
+
+- Added POS item availability, lead time, service slot, and daily capacity fields.
+- Added Catalog controls for sold-out status, service windows, lead time, and per-day capacity.
+- Updated Orders to show item slot/lead/remaining capacity and disable unavailable or capped-out items.
+- Hardened order creation so stale submissions cannot exceed daily item capacity.
+- Seeded demo F&B, package, spa, activity, and transport items with realistic operational limits.
+- Added E2E coverage for stale order submissions against daily POS capacity.
+
 ## 0.17.0 - Production Deployment Readiness
 
 - Added `/api/health` readiness endpoint that verifies application and database availability.

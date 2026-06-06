@@ -1,6 +1,6 @@
 "use server";
 
-import { format } from "date-fns";
+import { endOfDay, format, startOfDay } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
@@ -92,7 +92,7 @@ export async function createOrderAction(formData: FormData) {
   }
 
   const posItems = await prisma.posItem.findMany({
-    where: { isActive: true },
+    where: { isActive: true, isAvailable: true },
     orderBy: { name: "asc" },
   });
 
@@ -113,6 +113,40 @@ export async function createOrderAction(formData: FormData) {
 
   if (selectedItems.length === 0) {
     redirectWithActionError("/orders", "Pilih minimal satu item POS.");
+  }
+
+  const cappedItems = selectedItems.filter((line) => line.item.dailyCapacity !== null);
+
+  if (cappedItems.length > 0) {
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    const itemIds = cappedItems.map((line) => line.item.id);
+    const soldToday = await prisma.orderItem.groupBy({
+      by: ["itemId"],
+      where: {
+        itemId: { in: itemIds },
+        order: {
+          createdAt: { gte: todayStart, lte: todayEnd },
+          status: { not: OrderStatus.CANCELLED },
+        },
+      },
+      _sum: { quantity: true },
+    });
+    const soldTodayByItemId = new Map(soldToday.map((row) => [row.itemId, row._sum.quantity ?? 0]));
+
+    for (const line of cappedItems) {
+      const capacity = line.item.dailyCapacity;
+
+      if (capacity === null) {
+        continue;
+      }
+
+      const remaining = Math.max(0, capacity - (soldTodayByItemId.get(line.item.id) ?? 0));
+
+      if (line.quantity > remaining) {
+        redirectWithActionError("/orders", `${line.item.name} melewati kuota hari ini. Sisa kuota: ${remaining}.`);
+      }
+    }
   }
 
   const subtotal = selectedItems.reduce((sum, line) => sum + line.total, 0);

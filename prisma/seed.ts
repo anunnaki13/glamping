@@ -337,17 +337,17 @@ async function main() {
 
   const items = await prisma.posItem.createManyAndReturn({
     data: [
-      { name: "Floating Breakfast", category: PosCategory.PACKAGE, price: "350000", description: "Breakfast tray served at private pool/deck.", photoUrl: "/uploads/demo/catalog-floating-breakfast.jpg" },
-      { name: "Romantic Dinner", category: PosCategory.PACKAGE, price: "850000", description: "Private dinner setup with decoration.", photoUrl: "/uploads/demo/catalog-romantic-dinner.jpg" },
-      { name: "BBQ Night", category: PosCategory.FOOD, price: "450000", description: "Outdoor BBQ dinner experience.", photoUrl: "/uploads/demo/catalog-bbq-night.jpg" },
-      { name: "Nusa Signature Breakfast", category: PosCategory.FOOD, price: "280000", description: "Bali-style breakfast spread with fruit, pastry, and coffee.", photoUrl: "/uploads/demo/catalog-floating-breakfast.jpg" },
-      { name: "Coconut Mojito", category: PosCategory.BEVERAGE, price: "95000", description: "Fresh coconut mocktail with mint and lime.", photoUrl: "/uploads/demo/catalog-coconut-mojito.jpg" },
-      { name: "Yoga Session", category: PosCategory.ACTIVITY, price: "150000", description: "Morning yoga session.", photoUrl: "/uploads/demo/catalog-yoga-session.jpg" },
-      { name: "Couple Spa Treatment", category: PosCategory.SPA, price: "750000", description: "Couple massage and wellness treatment.", photoUrl: "/uploads/demo/catalog-couple-spa.jpg" },
-      { name: "Jeep Sunrise Tour", category: PosCategory.ACTIVITY, price: "650000", description: "Sunrise tour with local operator.", photoUrl: "/uploads/demo/catalog-jeep-sunrise.jpg" },
-      { name: "ATV Ride", category: PosCategory.ACTIVITY, price: "500000", description: "Guided ATV activity.", photoUrl: "/uploads/demo/catalog-atv-ride.jpg" },
-      { name: "Waterfall Trekking", category: PosCategory.ACTIVITY, price: "425000", description: "Guided jungle trek to a waterfall route.", photoUrl: "/uploads/demo/catalog-waterfall-trek.jpg" },
-      { name: "Airport Pickup", category: PosCategory.TRANSPORT, price: "450000", description: "Airport to property transfer.", photoUrl: "/uploads/demo/catalog-airport-pickup.jpg" },
+      { name: "Floating Breakfast", category: PosCategory.PACKAGE, price: "350000", description: "Breakfast tray served at private pool/deck.", photoUrl: "/uploads/demo/catalog-floating-breakfast.jpg", leadTimeMinutes: 60, dailyCapacity: 12, slotLabel: "07:00-10:00" },
+      { name: "Romantic Dinner", category: PosCategory.PACKAGE, price: "850000", description: "Private dinner setup with decoration.", photoUrl: "/uploads/demo/catalog-romantic-dinner.jpg", leadTimeMinutes: 240, dailyCapacity: 4, slotLabel: "18:00-21:00" },
+      { name: "BBQ Night", category: PosCategory.FOOD, price: "450000", description: "Outdoor BBQ dinner experience.", photoUrl: "/uploads/demo/catalog-bbq-night.jpg", leadTimeMinutes: 180, dailyCapacity: 8, slotLabel: "18:00-22:00" },
+      { name: "Nusa Signature Breakfast", category: PosCategory.FOOD, price: "280000", description: "Bali-style breakfast spread with fruit, pastry, and coffee.", photoUrl: "/uploads/demo/catalog-floating-breakfast.jpg", leadTimeMinutes: 30, dailyCapacity: 20, slotLabel: "07:00-11:00" },
+      { name: "Coconut Mojito", category: PosCategory.BEVERAGE, price: "95000", description: "Fresh coconut mocktail with mint and lime.", photoUrl: "/uploads/demo/catalog-coconut-mojito.jpg", leadTimeMinutes: 10, slotLabel: "All day" },
+      { name: "Yoga Session", category: PosCategory.ACTIVITY, price: "150000", description: "Morning yoga session.", photoUrl: "/uploads/demo/catalog-yoga-session.jpg", leadTimeMinutes: 120, dailyCapacity: 10, slotLabel: "06:30" },
+      { name: "Couple Spa Treatment", category: PosCategory.SPA, price: "750000", description: "Couple massage and wellness treatment.", photoUrl: "/uploads/demo/catalog-couple-spa.jpg", leadTimeMinutes: 180, dailyCapacity: 6, slotLabel: "By appointment" },
+      { name: "Jeep Sunrise Tour", category: PosCategory.ACTIVITY, price: "650000", description: "Sunrise tour with local operator.", photoUrl: "/uploads/demo/catalog-jeep-sunrise.jpg", leadTimeMinutes: 720, dailyCapacity: 6, slotLabel: "03:30" },
+      { name: "ATV Ride", category: PosCategory.ACTIVITY, price: "500000", description: "Guided ATV activity.", photoUrl: "/uploads/demo/catalog-atv-ride.jpg", leadTimeMinutes: 180, dailyCapacity: 8, slotLabel: "09:00 / 14:00" },
+      { name: "Waterfall Trekking", category: PosCategory.ACTIVITY, price: "425000", description: "Guided jungle trek to a waterfall route.", photoUrl: "/uploads/demo/catalog-waterfall-trek.jpg", leadTimeMinutes: 360, dailyCapacity: 8, slotLabel: "08:00" },
+      { name: "Airport Pickup", category: PosCategory.TRANSPORT, price: "450000", description: "Airport to property transfer.", photoUrl: "/uploads/demo/catalog-airport-pickup.jpg", leadTimeMinutes: 360, slotLabel: "By arrival" },
     ],
   });
 

@@ -6,6 +6,7 @@ import {
   ReceiptText,
   ShoppingBag,
 } from "lucide-react";
+import { endOfDay, startOfDay } from "date-fns";
 import {
   OrderStatus,
   PaymentStatus,
@@ -70,6 +71,8 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const canWrite = hasPermission(role, "pos:write");
   const canViewFinancials = canViewOperationalFinancialData(role);
   const prisma = getPrisma();
+  const todayStart = startOfDay(new Date());
+  const todayEnd = endOfDay(new Date());
   const [orders, reservations, posItems] = await Promise.all([
     prisma.order.findMany({
       where: {
@@ -104,6 +107,17 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     }),
     prisma.posItem.findMany({
       where: { isActive: true },
+      include: {
+        orderItems: {
+          where: {
+            order: {
+              createdAt: { gte: todayStart, lte: todayEnd },
+              status: { not: OrderStatus.CANCELLED },
+            },
+          },
+          select: { quantity: true },
+        },
+      },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     }),
   ]);
@@ -114,6 +128,26 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     .filter((order) => order.status !== OrderStatus.CANCELLED)
     .reduce((sum, order) => sum + Number(order.total), 0);
   const itemCount = orders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+  const posItemAvailability = new Map(
+    posItems.map((item) => {
+      const soldToday = item.orderItems.reduce((sum, orderItem) => sum + orderItem.quantity, 0);
+      const remaining = item.dailyCapacity === null ? null : Math.max(0, item.dailyCapacity - soldToday);
+
+      return [
+        item.id,
+        {
+          soldToday,
+          remaining,
+          canOrder: item.isAvailable && (remaining === null || remaining > 0),
+        },
+      ];
+    }),
+  );
+  const orderableItemCount = posItems.filter((item) => posItemAvailability.get(item.id)?.canOrder).length;
+  const cappedOutItemCount = posItems.filter((item) => {
+    const availability = posItemAvailability.get(item.id);
+    return item.isAvailable && availability?.remaining === 0;
+  }).length;
 
   return (
     <AppShell>
@@ -127,7 +161,8 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusBadge label={`${orders.length} orders`} tone="info" dot />
-          <StatusBadge label={`${posItems.length} active items`} tone="muted" dot />
+          <StatusBadge label={`${orderableItemCount}/${posItems.length} orderable`} tone="success" dot />
+          <StatusBadge label={`${cappedOutItemCount} capped out`} tone={cappedOutItemCount > 0 ? "warning" : "muted"} dot />
         </div>
       </div>
 
@@ -136,7 +171,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
       <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard title={canViewFinancials ? "Order Revenue" : "Total Orders"} value={canViewFinancials ? formatIdr(revenue) : String(orders.length)} icon={<CreditCard className="size-5" />} tone="success" />
         <MetricCard title="Open Orders" value={String(openOrders)} icon={<ReceiptText className="size-5" />} tone="warning" />
-        <MetricCard title={canViewFinancials ? "Unpaid Orders" : "Active Items"} value={canViewFinancials ? String(unpaidOrders) : String(posItems.length)} icon={<CreditCard className="size-5" />} tone="danger" />
+        <MetricCard title={canViewFinancials ? "Unpaid Orders" : "Orderable Items"} value={canViewFinancials ? String(unpaidOrders) : String(orderableItemCount)} icon={<CreditCard className="size-5" />} tone="danger" />
         <MetricCard title="Items Sold" value={String(itemCount)} icon={<ShoppingBag className="size-5" />} tone="info" />
       </section>
 
@@ -276,30 +311,46 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                       <div key={category} className="rounded-[22px] surface-inset p-3">
                         <p className="text-xs font-black uppercase tracking-normal text-white/42">{posCategoryLabels[category]}</p>
                         <div className="mt-3 space-y-2">
-                          {items.map((item) => (
-                            <label key={item.id} className="grid grid-cols-[52px_1fr_72px] items-center gap-3 rounded-[16px] surface-inset p-3">
-                              <span className="relative size-12 overflow-hidden rounded-[14px] border border-white/10 bg-white/[0.04]">
-                                {item.photoUrl ? (
-                                  <img src={item.photoUrl} alt={`${item.name} photo`} className="h-full w-full object-cover" loading="lazy" />
-                                ) : (
-                                  <span className="grid h-full w-full place-items-center text-white/34">
-                                    <ShoppingBag className="size-5" />
+                          {items.map((item) => {
+                            const availability = posItemAvailability.get(item.id);
+                            const remaining = availability?.remaining ?? null;
+                            const canOrderItem = availability?.canOrder ?? false;
+                            const leadTimeLabel = item.leadTimeMinutes > 0 ? `${item.leadTimeMinutes} min lead` : "No lead";
+                            const capacityLabel = remaining === null ? "Unlimited today" : `${remaining}/${item.dailyCapacity} left today`;
+                            const availabilityLabel = !item.isAvailable ? "Sold out" : remaining === 0 ? "Quota full" : capacityLabel;
+
+                            return (
+                              <label key={item.id} className={`grid grid-cols-[52px_1fr_72px] items-center gap-3 rounded-[16px] surface-inset p-3 ${canOrderItem ? "" : "opacity-60"}`}>
+                                <span className="relative size-12 overflow-hidden rounded-[14px] border border-white/10 bg-white/[0.04]">
+                                  {item.photoUrl ? (
+                                    <img src={item.photoUrl} alt={`${item.name} photo`} className="h-full w-full object-cover" loading="lazy" />
+                                  ) : (
+                                    <span className="grid h-full w-full place-items-center text-white/34">
+                                      <ShoppingBag className="size-5" />
+                                    </span>
+                                  )}
+                                </span>
+                                <span>
+                                  <span className="block text-sm font-black text-white">{item.name}</span>
+                                  <span className="mt-1 block text-xs font-semibold text-[#b8fbff]">{formatIdr(Number(item.price))}</span>
+                                  <span className="mt-2 flex flex-wrap gap-1.5">
+                                    <StatusBadge label={item.slotLabel ?? "Anytime"} tone="muted" />
+                                    <StatusBadge label={leadTimeLabel} tone="info" />
+                                    <StatusBadge label={availabilityLabel} tone={canOrderItem ? "success" : "warning"} />
                                   </span>
-                                )}
-                              </span>
-                              <span>
-                                <span className="block text-sm font-black text-white">{item.name}</span>
-                                <span className="mt-1 block text-xs font-semibold text-[#b8fbff]">{formatIdr(Number(item.price))}</span>
-                              </span>
-                              <input
-                                name={`quantity_${item.id}`}
-                                type="number"
-                                min="0"
-                                defaultValue="0"
-                                className="min-h-10 rounded-[16px] surface-field px-3 text-center text-sm font-black text-white outline-none"
-                              />
-                            </label>
-                          ))}
+                                </span>
+                                <input
+                                  name={`quantity_${item.id}`}
+                                  type="number"
+                                  min="0"
+                                  max={remaining ?? undefined}
+                                  defaultValue="0"
+                                  disabled={!canOrderItem}
+                                  className="min-h-10 rounded-[16px] surface-field px-3 text-center text-sm font-black text-white outline-none disabled:cursor-not-allowed disabled:opacity-45"
+                                />
+                              </label>
+                            );
+                          })}
                         </div>
                       </div>
                     );

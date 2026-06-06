@@ -17,7 +17,15 @@ async function cleanupDatabase() {
   }
 
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
-  await prisma.posItem.deleteMany({ where: { name: { startsWith: "Media Test" } } });
+  await prisma.order.deleteMany({ where: { code: { startsWith: "E2E-CAP-" } } });
+  await prisma.posItem.deleteMany({
+    where: {
+      OR: [
+        { name: { startsWith: "Media Test" } },
+        { name: { startsWith: "Capacity Test" } },
+      ],
+    },
+  });
   await prisma.$disconnect();
 }
 

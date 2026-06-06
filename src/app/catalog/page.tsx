@@ -66,7 +66,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
   const activeItems = items.filter((item) => item.isActive);
   const inactiveItems = items.length - activeItems.length;
-  const activeCategories = new Set(activeItems.map((item) => item.category)).size;
+  const availableItems = activeItems.filter((item) => item.isAvailable);
+  const unavailableActiveItems = activeItems.length - availableItems.length;
+  const capacityControlledItems = activeItems.filter((item) => item.dailyCapacity !== null);
   const catalogValue = activeItems.reduce((sum, item) => sum + Number(item.price), 0);
   const totalSoldQuantity = items.reduce((sum, item) => sum + item.orderItems.reduce((itemSum, orderItem) => itemSum + orderItem.quantity, 0), 0);
   const itemPerformance = items
@@ -92,6 +94,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusBadge label={`${activeItems.length} active items`} tone="success" dot />
+          <StatusBadge label={`${unavailableActiveItems} sold out`} tone={unavailableActiveItems > 0 ? "warning" : "muted"} dot />
           <StatusBadge label={`${inactiveItems} inactive`} tone="muted" dot />
         </div>
       </div>
@@ -100,9 +103,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         <MetricCard title="Catalog Items" value={String(items.length)} icon={<Boxes className="size-5" />} tone="info" />
-        <MetricCard title="Active Items" value={String(activeItems.length)} icon={<ShoppingBag className="size-5" />} tone="success" />
+        <MetricCard title="Available Items" value={`${availableItems.length}/${activeItems.length}`} icon={<ShoppingBag className="size-5" />} tone="success" />
         <MetricCard title="Items Sold" value={String(totalSoldQuantity)} icon={<Activity className="size-5" />} tone="warning" />
-        <MetricCard title={canViewFinancials ? "Active Price Sum" : "Active Categories"} value={canViewFinancials ? formatIdr(catalogValue) : String(activeCategories)} icon={<CircleDollarSign className="size-5" />} tone="danger" />
+        <MetricCard title={canViewFinancials ? "Active Price Sum" : "Capacity Rules"} value={canViewFinancials ? formatIdr(catalogValue) : String(capacityControlledItems.length)} icon={<CircleDollarSign className="size-5" />} tone="danger" />
       </section>
 
       <section className="mt-6 grid gap-5 2xl:grid-cols-[1fr_420px]">
@@ -119,7 +122,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                 </div>
               </div>
 
-              <form action={createCatalogItemAction} className="mt-5 grid gap-4 xl:grid-cols-[1fr_220px_180px_auto]">
+              <form action={createCatalogItemAction} className="mt-5 grid gap-4 xl:grid-cols-[1fr_220px_180px_220px]">
                 <TextField name="name" label="Item Name" placeholder="Sunset Picnic Basket" required />
                 <SelectField name="category" label="Category" defaultValue={PosCategory.PACKAGE}>
                   {categoryOrder.map((category) => (
@@ -129,12 +132,21 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                   ))}
                 </SelectField>
                 <TextField name="price" label="Price" type="number" min="0" defaultValue="0" required />
-                <label className="flex items-end gap-2 pb-3 text-sm font-bold text-white/64">
-                  <input type="checkbox" name="isActive" defaultChecked className="size-4 accent-[#29f1ff]" />
-                  Active
-                </label>
+                <div className="flex flex-wrap items-end gap-4 pb-3">
+                  <label className="flex items-center gap-2 text-sm font-bold text-white/64">
+                    <input type="checkbox" name="isActive" defaultChecked className="size-4 accent-[#29f1ff]" />
+                    Active
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-white/64">
+                    <input type="checkbox" name="isAvailable" defaultChecked className="size-4 accent-[#29f1ff]" />
+                    Available
+                  </label>
+                </div>
+                <TextField name="slotLabel" label="Slot / Service Window" placeholder="07:00-10:00" />
+                <TextField name="leadTimeMinutes" label="Lead Time Minutes" type="number" min="0" defaultValue="0" />
+                <TextField name="dailyCapacity" label="Daily Capacity" type="number" min="1" placeholder="Unlimited" />
                 <FileField name="photo" label="Upload Photo" className="xl:col-span-2" />
-                <TextField name="photoUrl" label="Photo URL / path" className="xl:col-span-2" placeholder="/uploads/demo/catalog-floating-breakfast.jpg" />
+                <TextField name="photoUrl" label="Photo URL / path" placeholder="/uploads/demo/catalog-floating-breakfast.jpg" />
                 <TextareaField name="description" label="Description" className="xl:col-span-2" />
                 <div className="xl:col-span-4">
                   <button className="gold-gradient min-h-11 rounded-[22px] px-5 text-sm font-black text-[#041015]">
@@ -155,6 +167,8 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                 const updateAction = updateCatalogItemAction.bind(null, item.id);
                 const quantitySold = item.orderItems.reduce((sum, orderItem) => sum + orderItem.quantity, 0);
                 const revenue = item.orderItems.reduce((sum, orderItem) => sum + Number(orderItem.total), 0);
+                const capacityLabel = item.dailyCapacity === null ? "Unlimited" : `${item.dailyCapacity}/day`;
+                const leadTimeLabel = item.leadTimeMinutes > 0 ? `${item.leadTimeMinutes} min` : "No lead time";
 
                 return (
                   <form key={item.id} action={updateAction} className="rounded-[22px] surface-inset p-4">
@@ -167,8 +181,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                         </div>
                       )}
                       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,12,0.08),rgba(2,8,12,0.62))]" />
-                      <div className="absolute bottom-3 left-3">
+                      <div className="absolute bottom-3 left-3 flex flex-wrap gap-2">
                         <StatusBadge label={posCategoryLabels[item.category]} tone="info" />
+                        <StatusBadge label={item.isAvailable ? "Available" : "Sold out"} tone={item.isAvailable ? "success" : "warning"} dot />
                       </div>
                     </div>
                     <div className="flex items-start justify-between gap-3">
@@ -176,7 +191,25 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                         <p className="font-black text-white">{item.name}</p>
                         {canViewFinancials ? <p className="mt-1 text-xs font-semibold text-[#b8fbff]">{formatIdr(Number(item.price))}</p> : null}
                       </div>
-                      <StatusBadge label={item.isActive ? "Active" : "Inactive"} tone={item.isActive ? "success" : "muted"} dot />
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <StatusBadge label={item.isActive ? "Active" : "Inactive"} tone={item.isActive ? "success" : "muted"} dot />
+                        <StatusBadge label={capacityLabel} tone={item.dailyCapacity === null ? "muted" : "info"} />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 rounded-[22px] surface-inset p-3 sm:grid-cols-3">
+                      <div>
+                        <p className="text-xs font-bold text-white/42">Slot</p>
+                        <p className="mt-1 text-sm font-black text-white">{item.slotLabel ?? "Anytime"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white/42">Lead</p>
+                        <p className="mt-1 text-sm font-black text-white">{leadTimeLabel}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white/42">Capacity</p>
+                        <p className="mt-1 text-sm font-black text-white">{capacityLabel}</p>
+                      </div>
                     </div>
 
                     <div className="mt-4 grid gap-3">
@@ -189,13 +222,24 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                         ))}
                       </SelectField>
                       {canViewFinancials ? <TextField name="price" label="Price" type="number" min="0" defaultValue={String(Number(item.price))} disabled={!canWrite} required /> : null}
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <TextField name="slotLabel" label="Slot / Service Window" defaultValue={item.slotLabel ?? ""} disabled={!canWrite} />
+                        <TextField name="leadTimeMinutes" label="Lead Minutes" type="number" min="0" defaultValue={String(item.leadTimeMinutes)} disabled={!canWrite} />
+                        <TextField name="dailyCapacity" label="Daily Capacity" type="number" min="1" defaultValue={item.dailyCapacity === null ? "" : String(item.dailyCapacity)} placeholder="Unlimited" disabled={!canWrite} />
+                      </div>
                       <FileField name="photo" label="Replace Photo" disabled={!canWrite} />
                       <TextField name="photoUrl" label="Photo URL / path" defaultValue={item.photoUrl ?? ""} disabled={!canWrite} />
                       <TextareaField name="description" label="Description" defaultValue={item.description ?? ""} disabled={!canWrite} />
-                      <label className="flex items-center gap-2 text-sm font-bold text-white/64">
-                        <input type="checkbox" name="isActive" defaultChecked={item.isActive} disabled={!canWrite} className="size-4 accent-[#29f1ff]" />
-                        Active item
-                      </label>
+                      <div className="flex flex-wrap gap-4">
+                        <label className="flex items-center gap-2 text-sm font-bold text-white/64">
+                          <input type="checkbox" name="isActive" defaultChecked={item.isActive} disabled={!canWrite} className="size-4 accent-[#29f1ff]" />
+                          Active item
+                        </label>
+                        <label className="flex items-center gap-2 text-sm font-bold text-white/64">
+                          <input type="checkbox" name="isAvailable" defaultChecked={item.isAvailable} disabled={!canWrite} className="size-4 accent-[#29f1ff]" />
+                          Available today
+                        </label>
+                      </div>
                     </div>
 
                     <div className={`mt-4 grid gap-3 rounded-[22px] surface-inset p-3 ${canViewFinancials ? "grid-cols-2" : "grid-cols-1"}`}>
