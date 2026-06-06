@@ -85,6 +85,10 @@ export default async function NewUnitPage({ searchParams }: NewUnitPageProps) {
                 ))}
               </SelectField>
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FileField label="Upload foto" name="photo" />
+              <TextField label="Photo URL / path" name="photoUrl" placeholder="/uploads/demo/unit-geodesic-dome-forest.jpg" />
+            </div>
             <TextArea label="Amenities" name="amenities" placeholder="Private deck, Wi-Fi, Breakfast" />
             <TextArea label="Deskripsi" name="description" placeholder="Catatan konsep unit." />
             <TextArea label="Notes internal" name="notes" placeholder="Catatan staff internal." />
@@ -116,6 +120,21 @@ function TextField(props: React.InputHTMLAttributes<HTMLInputElement> & { label:
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
       <input className={fieldClass()} {...inputProps} />
+    </label>
+  );
+}
+
+function FileField(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) {
+  const { label, ...inputProps } = props;
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className={`${fieldClass()} pt-3 file:mr-3 file:rounded-[14px] file:border-0 file:bg-white/12 file:px-3 file:py-1.5 file:text-xs file:font-black file:text-white`}
+        {...inputProps}
+      />
     </label>
   );
 }

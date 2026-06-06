@@ -6,6 +6,7 @@ import { ReservationStatus, UnitStatus } from "@/generated/prisma/enums";
 import { activityActor, requirePermission } from "@/lib/action-guard";
 import { redirectWithActionError, redirectWithActionSuccess } from "@/lib/action-feedback";
 import { getPrisma } from "@/lib/prisma";
+import { optionalImageReferenceSchema, saveUploadedImage } from "@/lib/uploads";
 
 const unitStatusValues = [
   UnitStatus.AVAILABLE,
@@ -31,6 +32,7 @@ const unitSchema = z.object({
   status: z.enum(unitStatusValues),
   description: z.string().trim().optional(),
   amenities: z.string().trim().optional(),
+  photoUrl: optionalImageReferenceSchema,
   notes: z.string().trim().optional(),
 });
 
@@ -120,6 +122,22 @@ export async function createUnitAction(formData: FormData) {
     redirectWithActionError("/units/new", "Unit type tidak ditemukan.");
   }
 
+  const duplicate = await prisma.unit.findFirst({
+    where: { propertyId: session.propertyId, code: parsed.code },
+  });
+
+  if (duplicate) {
+    redirectWithActionError("/units/new", "Kode unit sudah digunakan.");
+  }
+
+  let photoUrl = parsed.photoUrl || null;
+
+  try {
+    photoUrl = (await saveUploadedImage(formData, { directory: "units", prefix: parsed.code })) ?? photoUrl;
+  } catch (error) {
+    redirectWithActionError("/units/new", error);
+  }
+
   const unit = await prisma.unit.create({
     data: {
       propertyId: session.propertyId,
@@ -129,6 +147,7 @@ export async function createUnitAction(formData: FormData) {
       status: parsed.status,
       description: parsed.description || null,
       amenities: parseAmenities(parsed.amenities),
+      photoUrl,
       notes: parsed.notes || null,
     },
   });
@@ -173,6 +192,28 @@ export async function updateUnitAction(unitId: string, formData: FormData) {
     redirectWithActionError(actionPath, error);
   }
 
+  if (parsed.code !== existing.code) {
+    const duplicate = await prisma.unit.findFirst({
+      where: {
+        id: { not: unitId },
+        propertyId: session.propertyId,
+        code: parsed.code,
+      },
+    });
+
+    if (duplicate) {
+      redirectWithActionError(actionPath, "Kode unit sudah digunakan.");
+    }
+  }
+
+  let photoUrl = parsed.photoUrl || null;
+
+  try {
+    photoUrl = (await saveUploadedImage(formData, { directory: "units", prefix: parsed.code })) ?? photoUrl;
+  } catch (error) {
+    redirectWithActionError(actionPath, error);
+  }
+
   const unit = await prisma.unit.update({
     where: { id: unitId },
     data: {
@@ -182,6 +223,7 @@ export async function updateUnitAction(unitId: string, formData: FormData) {
       status: parsed.status,
       description: parsed.description || null,
       amenities: parseAmenities(parsed.amenities),
+      photoUrl,
       notes: parsed.notes || null,
     },
   });

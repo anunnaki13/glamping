@@ -7,7 +7,7 @@ test("invalid catalog submission returns to the workflow with an error banner", 
   await page.getByLabel("Item Name").first().fill("x");
   await page.getByRole("button", { name: "Create Item" }).click();
   await page.waitForURL(/\/catalog\?actionStatus=error/);
-  await expect(page.getByRole("alert")).toContainText("Form belum lengkap atau ada nilai yang tidak valid.");
+  await expect(page.getByRole("alert").filter({ hasText: "Form belum lengkap atau ada nilai yang tidak valid." })).toBeVisible();
 });
 
 test("invalid calendar start date renders feedback without breaking the board", async ({ context, page, request }) => {

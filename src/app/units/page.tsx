@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BedDouble, CircleAlert, Plus, Users } from "lucide-react";
@@ -118,7 +119,11 @@ export default async function UnitsPage({ searchParams }: UnitsPageProps) {
 
             return (
               <GlassCard key={unit.id} variant="strong" className="overflow-hidden p-0 transition hover:-translate-y-0.5">
-                <div className="relative aspect-[16/9] border-b border-white/10 bg-[linear-gradient(135deg,rgba(41,241,255,0.16),transparent_42%),linear-gradient(215deg,rgba(169,137,255,0.10),transparent_46%),linear-gradient(145deg,rgba(17,26,38,0.94),rgba(5,8,14,0.82))]">
+                <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-[linear-gradient(135deg,rgba(41,241,255,0.16),transparent_42%),linear-gradient(215deg,rgba(169,137,255,0.10),transparent_46%),linear-gradient(145deg,rgba(17,26,38,0.94),rgba(5,8,14,0.82))]">
+                  {unit.photoUrl ? (
+                    <img src={unit.photoUrl} alt={`${unit.name} photo`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                  ) : null}
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,12,0.10),rgba(2,8,12,0.84)),linear-gradient(135deg,rgba(41,241,255,0.12),transparent_54%)]" />
                   <div className="absolute left-4 top-4">
                     <StatusBadge label={unitStatusLabels[unit.status]} tone={unitStatusTone[unit.status]} dot />
                   </div>

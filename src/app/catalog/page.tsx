@@ -1,8 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 import type { ReactNode } from "react";
 import {
   Activity,
   Boxes,
   CircleDollarSign,
+  ImageIcon,
   PackagePlus,
   ShoppingBag,
   Tags,
@@ -131,7 +133,8 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                   <input type="checkbox" name="isActive" defaultChecked className="size-4 accent-[#29f1ff]" />
                   Active
                 </label>
-                <TextField name="photoUrl" label="Photo URL" className="xl:col-span-2" />
+                <FileField name="photo" label="Upload Photo" className="xl:col-span-2" />
+                <TextField name="photoUrl" label="Photo URL / path" className="xl:col-span-2" placeholder="/uploads/demo/catalog-floating-breakfast.jpg" />
                 <TextareaField name="description" label="Description" className="xl:col-span-2" />
                 <div className="xl:col-span-4">
                   <button className="gold-gradient min-h-11 rounded-[22px] px-5 text-sm font-black text-[#041015]">
@@ -155,6 +158,19 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
                 return (
                   <form key={item.id} action={updateAction} className="rounded-[22px] surface-inset p-4">
+                    <div className="relative mb-4 aspect-[16/9] overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(135deg,rgba(41,241,255,0.12),transparent_45%),linear-gradient(145deg,rgba(12,22,32,0.95),rgba(5,10,14,0.86))]">
+                      {item.photoUrl ? (
+                        <img src={item.photoUrl} alt={`${item.name} photo`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="absolute inset-0 grid place-items-center text-white/34">
+                          <ImageIcon className="size-9" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,12,0.08),rgba(2,8,12,0.62))]" />
+                      <div className="absolute bottom-3 left-3">
+                        <StatusBadge label={posCategoryLabels[item.category]} tone="info" />
+                      </div>
+                    </div>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-black text-white">{item.name}</p>
@@ -173,7 +189,8 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                         ))}
                       </SelectField>
                       {canViewFinancials ? <TextField name="price" label="Price" type="number" min="0" defaultValue={String(Number(item.price))} disabled={!canWrite} required /> : null}
-                      <TextField name="photoUrl" label="Photo URL" defaultValue={item.photoUrl ?? ""} disabled={!canWrite} />
+                      <FileField name="photo" label="Replace Photo" disabled={!canWrite} />
+                      <TextField name="photoUrl" label="Photo URL / path" defaultValue={item.photoUrl ?? ""} disabled={!canWrite} />
                       <TextareaField name="description" label="Description" defaultValue={item.description ?? ""} disabled={!canWrite} />
                       <label className="flex items-center gap-2 text-sm font-bold text-white/64">
                         <input type="checkbox" name="isActive" defaultChecked={item.isActive} disabled={!canWrite} className="size-4 accent-[#29f1ff]" />
@@ -319,6 +336,24 @@ function TextField({
       <input
         {...props}
         className="min-h-11 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none placeholder:text-white/34 disabled:opacity-50"
+      />
+    </label>
+  );
+}
+
+function FileField({
+  label,
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  return (
+    <label className={className}>
+      <span className="mb-2 block text-xs font-black uppercase tracking-normal text-white/42">{label}</span>
+      <input
+        {...props}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="min-h-11 w-full rounded-[22px] surface-field px-4 pt-2.5 text-sm font-bold text-white outline-none disabled:opacity-50 file:mr-3 file:rounded-[14px] file:border-0 file:bg-white/12 file:px-3 file:py-1.5 file:text-xs file:font-black file:text-white"
       />
     </label>
   );

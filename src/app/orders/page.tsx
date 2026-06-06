@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import type { ReactNode } from "react";
 import {
   CreditCard,
@@ -276,7 +277,16 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                         <p className="text-xs font-black uppercase tracking-normal text-white/42">{posCategoryLabels[category]}</p>
                         <div className="mt-3 space-y-2">
                           {items.map((item) => (
-                            <label key={item.id} className="grid grid-cols-[1fr_72px] items-center gap-3 rounded-[16px] surface-inset p-3">
+                            <label key={item.id} className="grid grid-cols-[52px_1fr_72px] items-center gap-3 rounded-[16px] surface-inset p-3">
+                              <span className="relative size-12 overflow-hidden rounded-[14px] border border-white/10 bg-white/[0.04]">
+                                {item.photoUrl ? (
+                                  <img src={item.photoUrl} alt={`${item.name} photo`} className="h-full w-full object-cover" loading="lazy" />
+                                ) : (
+                                  <span className="grid h-full w-full place-items-center text-white/34">
+                                    <ShoppingBag className="size-5" />
+                                  </span>
+                                )}
+                              </span>
                               <span>
                                 <span className="block text-sm font-black text-white">{item.name}</span>
                                 <span className="mt-1 block text-xs font-semibold text-[#b8fbff]">{formatIdr(Number(item.price))}</span>

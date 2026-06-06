@@ -16,3 +16,6 @@ pnpm-debug.log*
 .next-dev.log
 .next-dev.pid
 .DS_Store
+public/uploads/*
+!public/uploads/demo/
+!public/uploads/demo/**

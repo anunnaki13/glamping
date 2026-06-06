@@ -184,6 +184,13 @@ async function main() {
     ["ST-01", "Suite Tent 01", suiteTent.id, UnitStatus.OCCUPIED],
     ["ST-02", "Suite Tent 02", suiteTent.id, UnitStatus.READY],
   ] as const;
+  const unitPhotoByPrefix = {
+    DD: "/uploads/demo/unit-geodesic-dome-forest.jpg",
+    FD: "/uploads/demo/unit-suite-tent-interior.jpg",
+    JV: "/uploads/demo/unit-jungle-cabin.jpg",
+    PD: "/uploads/demo/unit-glamping-tents-dusk.jpg",
+    ST: "/uploads/demo/unit-safari-tent-sunrise.jpg",
+  } as const;
 
   await prisma.unit.createMany({
     data: unitRows.map(([code, name, unitTypeId, status]) => ({
@@ -193,6 +200,7 @@ async function main() {
       name,
       status,
       amenities: ["Private deck", "Air conditioning", "Wi-Fi", "Breakfast"],
+      photoUrl: unitPhotoByPrefix[code.slice(0, 2) as keyof typeof unitPhotoByPrefix],
     })),
   });
 
@@ -329,14 +337,17 @@ async function main() {
 
   const items = await prisma.posItem.createManyAndReturn({
     data: [
-      { name: "Floating Breakfast", category: PosCategory.PACKAGE, price: "350000", description: "Breakfast tray served at private pool/deck." },
-      { name: "Romantic Dinner", category: PosCategory.PACKAGE, price: "850000", description: "Private dinner setup with decoration." },
-      { name: "BBQ Night", category: PosCategory.FOOD, price: "450000", description: "Outdoor BBQ dinner experience." },
-      { name: "Yoga Session", category: PosCategory.ACTIVITY, price: "150000", description: "Morning yoga session." },
-      { name: "Couple Spa Treatment", category: PosCategory.SPA, price: "750000", description: "Couple massage and wellness treatment." },
-      { name: "Jeep Sunrise Tour", category: PosCategory.ACTIVITY, price: "650000", description: "Sunrise tour with local operator." },
-      { name: "ATV Ride", category: PosCategory.ACTIVITY, price: "500000", description: "Guided ATV activity." },
-      { name: "Airport Pickup", category: PosCategory.TRANSPORT, price: "450000", description: "Airport to property transfer." },
+      { name: "Floating Breakfast", category: PosCategory.PACKAGE, price: "350000", description: "Breakfast tray served at private pool/deck.", photoUrl: "/uploads/demo/catalog-floating-breakfast.jpg" },
+      { name: "Romantic Dinner", category: PosCategory.PACKAGE, price: "850000", description: "Private dinner setup with decoration.", photoUrl: "/uploads/demo/catalog-romantic-dinner.jpg" },
+      { name: "BBQ Night", category: PosCategory.FOOD, price: "450000", description: "Outdoor BBQ dinner experience.", photoUrl: "/uploads/demo/catalog-bbq-night.jpg" },
+      { name: "Nusa Signature Breakfast", category: PosCategory.FOOD, price: "280000", description: "Bali-style breakfast spread with fruit, pastry, and coffee.", photoUrl: "/uploads/demo/catalog-floating-breakfast.jpg" },
+      { name: "Coconut Mojito", category: PosCategory.BEVERAGE, price: "95000", description: "Fresh coconut mocktail with mint and lime.", photoUrl: "/uploads/demo/catalog-coconut-mojito.jpg" },
+      { name: "Yoga Session", category: PosCategory.ACTIVITY, price: "150000", description: "Morning yoga session.", photoUrl: "/uploads/demo/catalog-yoga-session.jpg" },
+      { name: "Couple Spa Treatment", category: PosCategory.SPA, price: "750000", description: "Couple massage and wellness treatment.", photoUrl: "/uploads/demo/catalog-couple-spa.jpg" },
+      { name: "Jeep Sunrise Tour", category: PosCategory.ACTIVITY, price: "650000", description: "Sunrise tour with local operator.", photoUrl: "/uploads/demo/catalog-jeep-sunrise.jpg" },
+      { name: "ATV Ride", category: PosCategory.ACTIVITY, price: "500000", description: "Guided ATV activity.", photoUrl: "/uploads/demo/catalog-atv-ride.jpg" },
+      { name: "Waterfall Trekking", category: PosCategory.ACTIVITY, price: "425000", description: "Guided jungle trek to a waterfall route.", photoUrl: "/uploads/demo/catalog-waterfall-trek.jpg" },
+      { name: "Airport Pickup", category: PosCategory.TRANSPORT, price: "450000", description: "Airport to property transfer.", photoUrl: "/uploads/demo/catalog-airport-pickup.jpg" },
     ],
   });
 

@@ -6,6 +6,7 @@ import { PosCategory } from "@/generated/prisma/enums";
 import { activityActor, requirePermission } from "@/lib/action-guard";
 import { redirectWithActionError, redirectWithActionSuccess } from "@/lib/action-feedback";
 import { getPrisma } from "@/lib/prisma";
+import { optionalImageReferenceSchema, saveUploadedImage } from "@/lib/uploads";
 
 const posCategoryValues = [
   PosCategory.FOOD,
@@ -22,7 +23,7 @@ const catalogItemSchema = z.object({
   category: z.enum(posCategoryValues),
   price: z.coerce.number().min(0).max(999_999_999),
   description: z.string().trim().max(600).optional(),
-  photoUrl: z.string().trim().url().optional().or(z.literal("")),
+  photoUrl: optionalImageReferenceSchema,
   isActive: z.boolean(),
 });
 
@@ -63,13 +64,21 @@ export async function createCatalogItemAction(formData: FormData) {
     redirectWithActionError("/catalog", "Item katalog dengan nama ini sudah ada.");
   }
 
+  let photoUrl = parsed.photoUrl || null;
+
+  try {
+    photoUrl = (await saveUploadedImage(formData, { directory: "catalog", prefix: parsed.name })) ?? photoUrl;
+  } catch (error) {
+    redirectWithActionError("/catalog", error);
+  }
+
   const item = await prisma.posItem.create({
     data: {
       name: parsed.name,
       category: parsed.category,
       price: String(parsed.price),
       description: parsed.description || null,
-      photoUrl: parsed.photoUrl || null,
+      photoUrl,
       isActive: parsed.isActive,
     },
   });
@@ -123,6 +132,14 @@ export async function updateCatalogItemAction(itemId: string, formData: FormData
     }
   }
 
+  let photoUrl = parsed.photoUrl || null;
+
+  try {
+    photoUrl = (await saveUploadedImage(formData, { directory: "catalog", prefix: parsed.name })) ?? photoUrl;
+  } catch (error) {
+    redirectWithActionError("/catalog", error);
+  }
+
   const item = await prisma.posItem.update({
     where: { id: itemId },
     data: {
@@ -130,7 +147,7 @@ export async function updateCatalogItemAction(itemId: string, formData: FormData
       category: parsed.category,
       price: String(parsed.price),
       description: parsed.description || null,
-      photoUrl: parsed.photoUrl || null,
+      photoUrl,
       isActive: parsed.isActive,
     },
   });

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BedDouble, Save } from "lucide-react";
@@ -78,9 +79,15 @@ export default async function UnitDetailPage({ params, searchParams }: UnitDetai
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <GlassCard variant="strong" className="overflow-hidden p-0">
-          <div className="relative min-h-72 bg-[linear-gradient(135deg,rgba(41,241,255,0.18),transparent_44%),linear-gradient(145deg,rgba(16,29,39,0.95),rgba(7,16,23,0.86))] p-6">
-            <StatusBadge label={unitStatusLabels[unit.status]} tone={unitStatusTone[unit.status]} dot />
-            <div className="absolute bottom-6 left-6 right-6">
+          <div className="relative min-h-72 overflow-hidden bg-[linear-gradient(135deg,rgba(41,241,255,0.18),transparent_44%),linear-gradient(145deg,rgba(16,29,39,0.95),rgba(7,16,23,0.86))] p-6">
+            {unit.photoUrl ? (
+              <img src={unit.photoUrl} alt={`${unit.name} photo`} className="absolute inset-0 h-full w-full object-cover" />
+            ) : null}
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,12,0.18),rgba(2,8,12,0.86)),linear-gradient(135deg,rgba(41,241,255,0.16),transparent_48%)]" />
+            <div className="relative z-10">
+              <StatusBadge label={unitStatusLabels[unit.status]} tone={unitStatusTone[unit.status]} dot />
+            </div>
+            <div className="absolute bottom-6 left-6 right-6 z-10">
               <div className="grid size-16 place-items-center rounded-[24px] border border-white/12 bg-white/10 text-[#b8fbff]">
                 <BedDouble className="size-8" />
               </div>
@@ -122,6 +129,10 @@ export default async function UnitDetailPage({ params, searchParams }: UnitDetai
                     </option>
                   ))}
                 </SelectField>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FileField label="Replace foto" name="photo" />
+                <TextField label="Photo URL / path" name="photoUrl" defaultValue={unit.photoUrl ?? ""} />
               </div>
               <TextArea label="Amenities" name="amenities" defaultValue={amenities} />
               <TextArea label="Deskripsi" name="description" defaultValue={unit.description ?? ""} />
@@ -200,6 +211,21 @@ function TextField(props: React.InputHTMLAttributes<HTMLInputElement> & { label:
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
       <input className={fieldClass()} {...inputProps} />
+    </label>
+  );
+}
+
+function FileField(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) {
+  const { label, ...inputProps } = props;
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className={`${fieldClass()} pt-3 file:mr-3 file:rounded-[14px] file:border-0 file:bg-white/12 file:px-3 file:py-1.5 file:text-xs file:font-black file:text-white`}
+        {...inputProps}
+      />
     </label>
   );
 }
