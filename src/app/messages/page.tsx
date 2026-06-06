@@ -159,8 +159,8 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
         <MetricCard title={canWrite ? "Missing Phone" : "Read Scope"} value={canWrite ? String(missingPhones) : "Limited"} icon={<PhoneOff className="size-5" />} />
       </section>
 
-      <section className="mt-6 grid gap-5 2xl:grid-cols-[1fr_420px]">
-        <div className="space-y-5">
+      <section className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="min-w-0 space-y-5">
           {canWrite ? (
           <GlassCard className="p-5">
             <div className="flex items-center justify-between gap-4">
@@ -342,7 +342,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
           </GlassCard>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <GlassCard className="p-5">
             <h3 className="text-lg font-black text-white">Variables</h3>
             <p className="mt-2 text-sm font-semibold leading-6 text-white/52">

@@ -13,6 +13,7 @@ import type {
   ReservationStatus,
   UnitStatus,
 } from "@/generated/prisma/enums";
+import type { StatusTone } from "@/components/ui/status-badge";
 
 export const unitStatusLabels: Record<UnitStatus, string> = {
   AVAILABLE: "Available",
@@ -34,13 +35,13 @@ export const unitStatusDescriptions: Record<UnitStatus, string> = {
   OUT_OF_ORDER: "Unit tidak dapat dijual sampai dibuka kembali.",
 };
 
-export const unitStatusTone: Record<UnitStatus, "success" | "warning" | "danger" | "info" | "muted"> = {
-  AVAILABLE: "success",
-  OCCUPIED: "info",
-  DIRTY: "warning",
-  CLEANING: "info",
+export const unitStatusTone: Record<UnitStatus, StatusTone> = {
+  AVAILABLE: "blue",
+  OCCUPIED: "violet",
+  DIRTY: "orange",
+  CLEANING: "cyan",
   READY: "success",
-  MAINTENANCE: "danger",
+  MAINTENANCE: "warning",
   OUT_OF_ORDER: "danger",
 };
 
@@ -91,13 +92,13 @@ export const reservationStatusLabels: Record<ReservationStatus, string> = {
   NO_SHOW: "No show",
 };
 
-export const reservationStatusTone: Record<ReservationStatus, "success" | "warning" | "danger" | "info" | "muted"> = {
+export const reservationStatusTone: Record<ReservationStatus, StatusTone> = {
   PENDING: "warning",
-  CONFIRMED: "success",
-  CHECKED_IN: "info",
-  CHECKED_OUT: "muted",
+  CONFIRMED: "blue",
+  CHECKED_IN: "cyan",
+  CHECKED_OUT: "slate",
   CANCELLED: "danger",
-  NO_SHOW: "danger",
+  NO_SHOW: "orange",
 };
 
 export const paymentStatusLabels: Record<PaymentStatus, string> = {
@@ -107,11 +108,11 @@ export const paymentStatusLabels: Record<PaymentStatus, string> = {
   REFUNDED: "Refunded",
 };
 
-export const paymentStatusTone: Record<PaymentStatus, "success" | "warning" | "danger" | "info" | "muted"> = {
+export const paymentStatusTone: Record<PaymentStatus, StatusTone> = {
   UNPAID: "danger",
-  PARTIAL: "warning",
+  PARTIAL: "amber",
   PAID: "success",
-  REFUNDED: "muted",
+  REFUNDED: "violet",
 };
 
 export const paymentMethodLabels: Record<PaymentMethod, string> = {
@@ -131,10 +132,10 @@ export const paymentTransactionTypeLabels: Record<PaymentTransactionType, string
   ADJUSTMENT: "Adjustment",
 };
 
-export const paymentTransactionTypeTone: Record<PaymentTransactionType, "success" | "warning" | "danger" | "info" | "muted"> = {
+export const paymentTransactionTypeTone: Record<PaymentTransactionType, StatusTone> = {
   PAYMENT: "success",
-  REFUND: "warning",
-  ADJUSTMENT: "info",
+  REFUND: "amber",
+  ADJUSTMENT: "violet",
 };
 
 export const paymentTransactionStatusLabels: Record<PaymentTransactionStatus, string> = {
@@ -142,9 +143,9 @@ export const paymentTransactionStatusLabels: Record<PaymentTransactionStatus, st
   VOIDED: "Voided",
 };
 
-export const paymentTransactionStatusTone: Record<PaymentTransactionStatus, "success" | "warning" | "danger" | "info" | "muted"> = {
+export const paymentTransactionStatusTone: Record<PaymentTransactionStatus, StatusTone> = {
   POSTED: "success",
-  VOIDED: "muted",
+  VOIDED: "danger",
 };
 
 export const bookingSourceLabels: Record<BookingSource, string> = {
@@ -167,11 +168,11 @@ export const housekeepingStatusLabels: Record<HousekeepingStatus, string> = {
   BLOCKED: "Blocked",
 };
 
-export const housekeepingStatusTone: Record<HousekeepingStatus, "success" | "warning" | "danger" | "info" | "muted"> = {
-  DIRTY: "warning",
-  ASSIGNED: "info",
-  IN_PROGRESS: "info",
-  INSPECTION: "warning",
+export const housekeepingStatusTone: Record<HousekeepingStatus, StatusTone> = {
+  DIRTY: "orange",
+  ASSIGNED: "blue",
+  IN_PROGRESS: "cyan",
+  INSPECTION: "violet",
   READY: "success",
   BLOCKED: "danger",
 };
@@ -183,10 +184,10 @@ export const priorityLabels: Record<Priority, string> = {
   URGENT: "Urgent",
 };
 
-export const priorityTone: Record<Priority, "success" | "warning" | "danger" | "info" | "muted"> = {
-  LOW: "muted",
-  MEDIUM: "info",
-  HIGH: "warning",
+export const priorityTone: Record<Priority, StatusTone> = {
+  LOW: "slate",
+  MEDIUM: "blue",
+  HIGH: "amber",
   URGENT: "danger",
 };
 
@@ -211,13 +212,13 @@ export const requestStatusLabels: Record<RequestStatus, string> = {
   CANCELLED: "Cancelled",
 };
 
-export const requestStatusTone: Record<RequestStatus, "success" | "warning" | "danger" | "info" | "muted"> = {
-  OPEN: "warning",
-  ASSIGNED: "info",
-  IN_PROGRESS: "info",
-  WAITING_GUEST: "warning",
+export const requestStatusTone: Record<RequestStatus, StatusTone> = {
+  OPEN: "orange",
+  ASSIGNED: "blue",
+  IN_PROGRESS: "cyan",
+  WAITING_GUEST: "amber",
   COMPLETED: "success",
-  CANCELLED: "muted",
+  CANCELLED: "slate",
 };
 
 export const orderStatusLabels: Record<OrderStatus, string> = {
@@ -229,13 +230,13 @@ export const orderStatusLabels: Record<OrderStatus, string> = {
   CANCELLED: "Cancelled",
 };
 
-export const orderStatusTone: Record<OrderStatus, "success" | "warning" | "danger" | "info" | "muted"> = {
-  OPEN: "warning",
-  CONFIRMED: "info",
-  PREPARING: "warning",
-  DELIVERED: "info",
+export const orderStatusTone: Record<OrderStatus, StatusTone> = {
+  OPEN: "orange",
+  CONFIRMED: "blue",
+  PREPARING: "amber",
+  DELIVERED: "cyan",
   COMPLETED: "success",
-  CANCELLED: "muted",
+  CANCELLED: "slate",
 };
 
 export const posCategoryLabels: Record<PosCategory, string> = {

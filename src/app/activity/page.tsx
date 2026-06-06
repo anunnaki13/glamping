@@ -152,8 +152,8 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
         </form>
       </GlassCard>
 
-      <section className="mt-6 grid gap-5 2xl:grid-cols-[1fr_360px]">
-        <GlassCard className="overflow-hidden p-0">
+      <section className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
+        <GlassCard className="min-w-0 overflow-hidden p-0">
           <div className="border-b border-white/10 p-5">
             <h3 className="text-lg font-black text-white">Audit Timeline</h3>
             <p className="mt-1 text-sm font-semibold text-white/50">Menampilkan maksimal 120 event terbaru dari filter aktif.</p>
@@ -204,7 +204,7 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
           </div>
         </GlassCard>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <GlassCard className="p-5">
             <h3 className="text-lg font-black text-white">Actors</h3>
             <div className="mt-4 space-y-3">

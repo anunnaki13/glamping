@@ -20,6 +20,7 @@ import {
 } from "@/app/payments/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionFeedbackBanner } from "@/components/ui/action-feedback-banner";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePagePermission } from "@/lib/action-guard";
@@ -158,8 +159,8 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
         <MetricCard title="Active Outstanding" value={formatIdr(outstanding)} icon={<ReceiptText className="size-5" />} tone="danger" />
       </section>
 
-      <section className="mt-6 grid gap-5 2xl:grid-cols-[1fr_420px]">
-        <GlassCard variant="strong" className="overflow-hidden p-0">
+      <section className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <GlassCard variant="strong" className="min-w-0 overflow-hidden p-0">
           <div className="border-b border-white/10 p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -178,7 +179,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto premium-scroll">
             <table className="w-full min-w-[1120px] border-separate border-spacing-y-2 p-4 text-left">
               <thead>
                 <tr className="text-xs font-black uppercase tracking-normal text-white/42">
@@ -260,7 +261,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
           </div>
         </GlassCard>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           {canWrite ? (
             <GlassCard className="p-5">
               <h3 className="text-lg font-black text-white">Post Transaction</h3>
@@ -301,7 +302,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
                     ))}
                   </SelectField>
                 </div>
-                <TextField name="amount" label="Amount" type="number" min="1" required />
+                <MoneyField name="amount" label="Amount" required />
                 <TextField name="reference" label="Reference" placeholder="Transfer ref, QRIS id, card approval..." />
                 <TextareaField name="note" label="Note" placeholder="Payment context or finance note" />
                 <button className="gold-gradient min-h-11 w-full rounded-[22px] text-sm font-black text-[#041015]">
@@ -353,6 +354,16 @@ function TextField(props: React.InputHTMLAttributes<HTMLInputElement> & { label:
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
       <input className={fieldClass()} {...inputProps} />
+    </label>
+  );
+}
+
+function MoneyField(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) {
+  const { label, ...inputProps } = props;
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
+      <CurrencyInput className={fieldClass()} {...inputProps} />
     </label>
   );
 }

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatCard } from "@/components/ui/stat-card";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
 
 export type DashboardIconKey =
@@ -48,10 +48,10 @@ export type DashboardData = {
   unitStatus: Array<{ name: string; value: number; color: string }>;
   totalUnits: number;
   arrivals: Array<{ time: string; guest: string; meta: string; unit: string }>;
-  reservations: Array<{ guest: string; date: string; status: string; amount: string | null; tone: "success" | "warning" | "info" | "muted" | "danger" }>;
+  reservations: Array<{ guest: string; date: string; status: string; amount: string | null; tone: StatusTone }>;
   serviceRequests: Array<{ icon: DashboardIconKey; title: string; unit: string; age: string; priority: "Urgent" | "High" | "Medium" | "Low" }>;
   bookingSources: Array<{ source: string; value: number }>;
-  priorityTasks: Array<{ label: string; status: string; tone: "success" | "warning" | "danger" | "info" | "muted" }>;
+  priorityTasks: Array<{ label: string; status: string; tone: StatusTone }>;
   quickActions: Array<{
     label: string;
     href: string;

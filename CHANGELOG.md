@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.1 - UI Status And Currency Polish
+
+- Expanded status badge tones so operational statuses are easier to distinguish across reservations, units, housekeeping, service requests, orders, payments, and dashboard surfaces.
+- Added formatted Rupiah inputs that display thousands separators while submitting raw numeric values to existing server actions.
+- Updated primary money fields in catalog, orders, payments, reservations, check-in, check-out, and unit type creation.
+- Fixed wide board/table layouts so Housekeeping and similar modules no longer let the main panel overlap right-side panels.
+
 ## 0.18.0 - POS Catalog Availability Controls
 
 - Added POS item availability, lead time, service slot, and daily capacity fields.

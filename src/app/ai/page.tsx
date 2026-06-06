@@ -157,8 +157,8 @@ export default async function AiPage({ searchParams }: AiPageProps) {
         <MetricCard title="Prompts" value={String(prompts.length)} icon={<FileText className="size-5" />} />
       </section>
 
-      <section className="mt-6 grid gap-5 2xl:grid-cols-[1fr_420px]">
-        <div className="space-y-5">
+      <section className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="min-w-0 space-y-5">
           <GlassCard className="p-5">
             <div className="flex items-center gap-3">
               <div className="grid size-11 place-items-center rounded-[22px] bg-[#29f1ff]/14 text-[#b8fbff]">
@@ -239,7 +239,7 @@ export default async function AiPage({ searchParams }: AiPageProps) {
           </GlassCard>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <GlassCard className="p-5">
             <div className="flex items-center gap-3">
               <div className="grid size-11 place-items-center rounded-[22px] bg-emerald-400/12 text-emerald-100">

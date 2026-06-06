@@ -16,6 +16,7 @@ import {
 } from "@/app/catalog/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionFeedbackBanner } from "@/components/ui/action-feedback-banner";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getActionFeedback, type ActionFeedbackSearchParams } from "@/lib/action-feedback";
@@ -108,8 +109,8 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         <MetricCard title={canViewFinancials ? "Active Price Sum" : "Capacity Rules"} value={canViewFinancials ? formatIdr(catalogValue) : String(capacityControlledItems.length)} icon={<CircleDollarSign className="size-5" />} tone="danger" />
       </section>
 
-      <section className="mt-6 grid gap-5 2xl:grid-cols-[1fr_420px]">
-        <div className="space-y-5">
+      <section className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="min-w-0 space-y-5">
           {canWrite ? (
             <GlassCard className="p-5">
               <div className="flex items-center gap-3">
@@ -131,7 +132,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                     </option>
                   ))}
                 </SelectField>
-                <TextField name="price" label="Price" type="number" min="0" defaultValue="0" required />
+                <MoneyField name="price" label="Price" defaultValue="0" required />
                 <div className="flex flex-wrap items-end gap-4 pb-3">
                   <label className="flex items-center gap-2 text-sm font-bold text-white/64">
                     <input type="checkbox" name="isActive" defaultChecked className="size-4 accent-[#29f1ff]" />
@@ -221,7 +222,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                           </option>
                         ))}
                       </SelectField>
-                      {canViewFinancials ? <TextField name="price" label="Price" type="number" min="0" defaultValue={String(Number(item.price))} disabled={!canWrite} required /> : null}
+                      {canViewFinancials ? <MoneyField name="price" label="Price" defaultValue={String(Number(item.price))} disabled={!canWrite} required /> : null}
                       <div className="grid gap-3 sm:grid-cols-3">
                         <TextField name="slotLabel" label="Slot / Service Window" defaultValue={item.slotLabel ?? ""} disabled={!canWrite} />
                         <TextField name="leadTimeMinutes" label="Lead Minutes" type="number" min="0" defaultValue={String(item.leadTimeMinutes)} disabled={!canWrite} />
@@ -267,7 +268,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
           </GlassCard>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <GlassCard className="p-5">
             <div className="flex items-center gap-3">
               <div className="grid size-11 place-items-center rounded-[22px] bg-[#29f1ff]/14 text-[#b8fbff]">
@@ -378,6 +379,22 @@ function TextField({
     <label className={className}>
       <span className="mb-2 block text-xs font-black uppercase tracking-normal text-white/42">{label}</span>
       <input
+        {...props}
+        className="min-h-11 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none placeholder:text-white/34 disabled:opacity-50"
+      />
+    </label>
+  );
+}
+
+function MoneyField({
+  label,
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) {
+  return (
+    <label className={className}>
+      <span className="mb-2 block text-xs font-black uppercase tracking-normal text-white/42">{label}</span>
+      <CurrencyInput
         {...props}
         className="min-h-11 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none placeholder:text-white/34 disabled:opacity-50"
       />

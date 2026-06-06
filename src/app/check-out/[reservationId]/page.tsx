@@ -22,6 +22,7 @@ import {
 import { completeCheckoutWizardAction } from "@/app/check-out/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionFeedbackBanner } from "@/components/ui/action-feedback-banner";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePagePermission } from "@/lib/action-guard";
@@ -221,8 +222,8 @@ export default async function CheckoutWizardPage({ params, searchParams }: Check
           </div>
         </GlassCard>
       ) : (
-        <form action={checkoutAction} className="mt-6 grid gap-5 2xl:grid-cols-[1fr_390px]">
-          <div className="space-y-5">
+        <form action={checkoutAction} className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_390px]">
+          <div className="min-w-0 space-y-5">
             <GlassCard variant="strong" className="p-5">
               <div className="grid gap-3 md:grid-cols-4">
                 <StepPill step="1" title="Stay" tone="success" />
@@ -319,10 +320,8 @@ export default async function CheckoutWizardPage({ params, searchParams }: Check
                   </label>
                   <label className="block rounded-[22px] surface-inset p-4">
                     <span className="text-xs font-bold uppercase tracking-normal text-white/42">Amount paid for room</span>
-                    <input
+                    <CurrencyInput
                       name="amountPaid"
-                      type="number"
-                      min="0"
                       defaultValue={amountPaidDefault}
                       className="mt-3 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none"
                     />

@@ -3,6 +3,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { UnitStatus } from "@/generated/prisma/enums";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionFeedbackBanner } from "@/components/ui/action-feedback-banner";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { createUnitAction, createUnitTypeAction } from "@/app/units/actions";
@@ -52,7 +53,7 @@ export default async function NewUnitPage({ searchParams }: NewUnitPageProps) {
             <TextArea label="Deskripsi" name="description" placeholder="Premium dome dengan view utama." />
             <div className="grid gap-4 sm:grid-cols-2">
               <TextField label="Kapasitas" name="capacity" type="number" min="1" defaultValue="2" required />
-              <TextField label="Base rate" name="baseRate" type="number" min="0" defaultValue="1900000" required />
+              <MoneyField label="Base rate" name="baseRate" defaultValue="1900000" required />
             </div>
             <button className="gold-gradient inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[22px] px-4 text-sm font-black text-[#041015]">
               <Plus className="size-5" />
@@ -120,6 +121,16 @@ function TextField(props: React.InputHTMLAttributes<HTMLInputElement> & { label:
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
       <input className={fieldClass()} {...inputProps} />
+    </label>
+  );
+}
+
+function MoneyField(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) {
+  const { label, ...inputProps } = props;
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
+      <CurrencyInput className={fieldClass()} {...inputProps} />
     </label>
   );
 }

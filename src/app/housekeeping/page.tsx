@@ -180,8 +180,8 @@ export default async function HousekeepingPage({ searchParams }: HousekeepingPag
         <MetricCard title="Blocked" value={String(blockedCount)} icon={<ClipboardCheck className="size-5" />} tone="danger" />
       </section>
 
-      <section className="mt-6 grid gap-5 2xl:grid-cols-[1fr_360px]">
-        <div className="overflow-x-auto">
+      <section className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 overflow-x-auto premium-scroll pb-2">
           <div className="grid min-w-[1500px] gap-4 xl:grid-cols-6">
             {statusOrder.map((status) => {
               const columnTasks = tasks.filter((task) => task.status === status);
@@ -215,7 +215,7 @@ export default async function HousekeepingPage({ searchParams }: HousekeepingPag
           </div>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           {canWrite ? (
             <GlassCard className="p-5">
               <div className="flex items-center gap-3">

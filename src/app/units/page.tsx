@@ -109,8 +109,8 @@ export default async function UnitsPage({ searchParams }: UnitsPageProps) {
         ))}
       </section>
 
-      <section className="mt-6 grid gap-5 xl:grid-cols-[1fr_340px]">
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+      <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {units.map((unit) => {
             const latestTask = unit.housekeepingTasks[0];
             const nextReservation = unit.reservations[0];
@@ -184,7 +184,7 @@ export default async function UnitsPage({ searchParams }: UnitsPageProps) {
           })}
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <GlassCard className="p-5">
             <h3 className="text-lg font-black text-white">Unit Types</h3>
             <p className="mt-2 text-sm leading-6 text-white/58">

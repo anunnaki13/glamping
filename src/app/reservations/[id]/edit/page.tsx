@@ -10,6 +10,7 @@ import {
 import { updateReservationAction } from "@/app/reservations/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionFeedbackBanner } from "@/components/ui/action-feedback-banner";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePagePermission } from "@/lib/action-guard";
@@ -140,10 +141,10 @@ export default async function EditReservationPage({ params, searchParams }: Edit
             <div className="grid gap-4 md:grid-cols-3">
               <TextField label="Adults" name="adults" type="number" min="1" defaultValue={reservation.adults} required />
               <TextField label="Children" name="children" type="number" min="0" defaultValue={reservation.children} required />
-              <TextField label="Room rate" name="roomRate" type="number" min="0" defaultValue={Number(reservation.roomRate)} required />
+              <MoneyField label="Room rate" name="roomRate" defaultValue={Number(reservation.roomRate)} required />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <TextField label="Discount" name="discount" type="number" min="0" defaultValue={Number(reservation.discount)} />
+              <MoneyField label="Discount" name="discount" defaultValue={Number(reservation.discount)} />
               <SelectField label="Booking source" name="source" defaultValue={reservation.source} required>
                 {Object.values(BookingSource).map((source) => (
                   <option key={source} value={source}>
@@ -169,7 +170,7 @@ export default async function EditReservationPage({ params, searchParams }: Edit
               </SelectField>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <TextField label="Amount paid / deposit" name="amountPaid" type="number" min="0" defaultValue={Number(reservation.amountPaid)} />
+              <MoneyField label="Amount paid / deposit" name="amountPaid" defaultValue={Number(reservation.amountPaid)} />
               <TextArea label="Payment notes" name="paymentNotes" defaultValue={reservation.paymentNotes ?? ""} />
             </div>
             <TextArea label="Internal notes" name="notes" defaultValue={reservation.notes ?? ""} />
@@ -226,6 +227,16 @@ function TextField(props: React.InputHTMLAttributes<HTMLInputElement> & { label:
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
       <input className={fieldClass()} {...inputProps} />
+    </label>
+  );
+}
+
+function MoneyField(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) {
+  const { label, ...inputProps } = props;
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
+      <CurrencyInput className={fieldClass()} {...inputProps} />
     </label>
   );
 }

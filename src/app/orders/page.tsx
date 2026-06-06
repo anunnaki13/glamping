@@ -17,6 +17,7 @@ import {
 import { createOrderAction, updateOrderStatusAction } from "@/app/orders/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionFeedbackBanner } from "@/components/ui/action-feedback-banner";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatDateTimeId, formatIdr } from "@/lib/formatters";
@@ -175,15 +176,15 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
         <MetricCard title="Items Sold" value={String(itemCount)} icon={<ShoppingBag className="size-5" />} tone="info" />
       </section>
 
-      <section className="mt-6 grid gap-5 2xl:grid-cols-[1fr_430px]">
-        <GlassCard className="overflow-hidden p-0">
+      <section className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_430px]">
+        <GlassCard className="min-w-0 overflow-hidden p-0">
           <div className="border-b border-white/10 p-5">
             <h3 className="text-lg font-black text-white">Order Queue</h3>
             <p className="mt-1 text-sm font-semibold text-white/50">
               {canViewFinancials ? "Update status dapur/activity dan payment dari satu board." : "Pantau status dapur/activity dari satu board."}
             </p>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto premium-scroll">
             <table className={`w-full border-separate border-spacing-y-2 p-4 text-left ${canViewFinancials ? "min-w-[1120px]" : "min-w-[880px]"}`}>
               <thead>
                 <tr className="text-xs font-black uppercase tracking-normal text-white/42">
@@ -277,7 +278,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
           </div>
         </GlassCard>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           {canWrite ? (
             <GlassCard className="p-5">
               <div className="flex items-center gap-3">
@@ -358,8 +359,8 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <TextField name="discount" label="Discount" type="number" min="0" defaultValue="0" />
-                  <TextField name="tax" label="Tax" type="number" min="0" defaultValue="0" />
+                  <MoneyField name="discount" label="Discount" defaultValue="0" />
+                  <MoneyField name="tax" label="Tax" defaultValue="0" />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <SelectField name="status" label="Status" defaultValue={OrderStatus.OPEN}>
@@ -417,15 +418,15 @@ function MetricCard({
   );
 }
 
-function TextField({
+function MoneyField({
   label,
   className,
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) {
   return (
     <label className={className}>
       <span className="mb-2 block text-xs font-black uppercase tracking-normal text-white/42">{label}</span>
-      <input
+      <CurrencyInput
         {...props}
         className="min-h-11 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none placeholder:text-white/34"
       />
