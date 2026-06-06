@@ -1,0 +1,488 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  FRONT_OFFICE
+  HOUSEKEEPING
+  FNB_ACTIVITY
+  VIEWER
+}
+
+enum UnitStatus {
+  AVAILABLE
+  OCCUPIED
+  DIRTY
+  CLEANING
+  READY
+  MAINTENANCE
+  OUT_OF_ORDER
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+enum BookingSource {
+  DIRECT_WEBSITE
+  WHATSAPP
+  WALK_IN
+  BOOKING_COM
+  AIRBNB
+  AGODA
+  TRAVEL_AGENT
+  OTHER
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum HousekeepingStatus {
+  DIRTY
+  ASSIGNED
+  IN_PROGRESS
+  INSPECTION
+  READY
+  BLOCKED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum RequestType {
+  HOUSEKEEPING
+  ROOM_SERVICE
+  FNB_ORDER
+  TRANSPORT
+  ACTIVITY
+  MAINTENANCE
+  SPECIAL_REQUEST
+  COMPLAINT
+  OTHER
+}
+
+enum RequestStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  WAITING_GUEST
+  COMPLETED
+  CANCELLED
+}
+
+enum PosCategory {
+  FOOD
+  BEVERAGE
+  SPA
+  ACTIVITY
+  TRANSPORT
+  PACKAGE
+  MERCHANDISE
+}
+
+enum OrderStatus {
+  OPEN
+  CONFIRMED
+  PREPARING
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum MessageTemplateCategory {
+  BOOKING_CONFIRMATION
+  PAYMENT_REMINDER
+  CHECK_IN_REMINDER
+  WELCOME_MESSAGE
+  CHECKOUT_THANK_YOU
+  REVIEW_REQUEST
+  CUSTOM
+}
+
+enum CommunicationChannel {
+  WHATSAPP
+  EMAIL
+  PHONE_NOTE
+}
+
+enum CommunicationStatus {
+  PREPARED
+  OPENED_LINK
+  COPIED
+  SENT_MANUALLY
+}
+
+enum AiProvider {
+  OPENROUTER
+}
+
+enum AiPromptScope {
+  SYSTEM_GUARDRAILS
+  AI_CONCIERGE
+  MESSAGE_DRAFT
+  OPERATIONS_SUMMARY
+  REPORT_INSIGHTS
+}
+
+model Property {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  address   String?
+  phone     String?
+  email     String?
+  logoUrl   String?
+  timezone  String   @default("Asia/Makassar")
+  currency  String   @default("IDR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  unitTypes         UnitType[]
+  units             Unit[]
+  users             User[]
+  messageTemplates  MessageTemplate[]
+  communicationLogs CommunicationLog[]
+  aiConfiguration   AiConfiguration?
+  aiPromptTemplates AiPromptTemplate[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  propertyId   String
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([role])
+}
+
+model Guest {
+  id          String    @id @default(cuid())
+  fullName    String
+  email       String?
+  phone       String?
+  country     String?
+  city        String?
+  idType      String?
+  idNumber    String?
+  birthday    DateTime?
+  guestType   String    @default("GENERAL")
+  preferences String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  reservations      Reservation[]
+  serviceRequests   ServiceRequest[]
+  orders            Order[]
+  communicationLogs CommunicationLog[]
+
+  @@index([fullName])
+  @@index([phone])
+  @@index([email])
+}
+
+model UnitType {
+  id          String   @id @default(cuid())
+  propertyId  String
+  name        String
+  description String?
+  capacity    Int
+  baseRate    Decimal  @db.Decimal(14, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  units    Unit[]
+
+  @@unique([propertyId, name])
+  @@index([propertyId])
+}
+
+model Unit {
+  id          String     @id @default(cuid())
+  propertyId  String
+  unitTypeId  String
+  code        String     @unique
+  name        String
+  status      UnitStatus @default(AVAILABLE)
+  description String?
+  amenities   Json?
+  photoUrl    String?
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  property          Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  unitType          UnitType           @relation(fields: [unitTypeId], references: [id])
+  reservations      Reservation[]
+  housekeepingTasks HousekeepingTask[]
+
+  @@index([propertyId])
+  @@index([unitTypeId])
+  @@index([status])
+}
+
+model Reservation {
+  id            String            @id @default(cuid())
+  bookingCode   String            @unique
+  guestId       String
+  unitId        String?
+  checkInDate   DateTime
+  checkOutDate  DateTime
+  adults        Int               @default(1)
+  children      Int               @default(0)
+  status        ReservationStatus @default(PENDING)
+  source        BookingSource     @default(WHATSAPP)
+  paymentStatus PaymentStatus     @default(UNPAID)
+  roomRate      Decimal           @db.Decimal(14, 2)
+  discount      Decimal           @default(0) @db.Decimal(14, 2)
+  totalAmount   Decimal           @db.Decimal(14, 2)
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  guest             Guest              @relation(fields: [guestId], references: [id])
+  unit              Unit?              @relation(fields: [unitId], references: [id])
+  serviceRequests   ServiceRequest[]
+  orders            Order[]
+  communicationLogs CommunicationLog[]
+
+  @@index([checkInDate, checkOutDate])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([guestId])
+  @@index([unitId])
+}
+
+model HousekeepingTask {
+  id          String             @id @default(cuid())
+  unitId      String
+  assignedTo  String?
+  taskType    String
+  status      HousekeepingStatus @default(DIRTY)
+  priority    Priority           @default(MEDIUM)
+  dueAt       DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([dueAt])
+  @@index([unitId])
+}
+
+model ServiceRequest {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  reservationId String?
+  guestId       String?
+  type          RequestType
+  title         String
+  description   String?
+  status        RequestStatus @default(OPEN)
+  priority      Priority      @default(MEDIUM)
+  assignedTo    String?
+  internalNotes String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  completedAt   DateTime?
+
+  reservation Reservation? @relation(fields: [reservationId], references: [id])
+  guest       Guest?       @relation(fields: [guestId], references: [id])
+
+  @@index([status])
+  @@index([priority])
+  @@index([reservationId])
+  @@index([guestId])
+}
+
+model PosItem {
+  id          String      @id @default(cuid())
+  name        String
+  category    PosCategory
+  price       Decimal     @db.Decimal(14, 2)
+  description String?
+  photoUrl    String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  reservationId String?
+  guestId       String?
+  status        OrderStatus   @default(OPEN)
+  paymentStatus PaymentStatus @default(UNPAID)
+  subtotal      Decimal       @db.Decimal(14, 2)
+  discount      Decimal       @default(0) @db.Decimal(14, 2)
+  tax           Decimal       @default(0) @db.Decimal(14, 2)
+  total         Decimal       @db.Decimal(14, 2)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  reservation Reservation? @relation(fields: [reservationId], references: [id])
+  guest       Guest?       @relation(fields: [guestId], references: [id])
+  items       OrderItem[]
+
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([reservationId])
+  @@index([guestId])
+}
+
+model OrderItem {
+  id       String  @id @default(cuid())
+  orderId  String
+  itemId   String
+  name     String
+  quantity Int
+  price    Decimal @db.Decimal(14, 2)
+  total    Decimal @db.Decimal(14, 2)
+
+  order Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item  PosItem @relation(fields: [itemId], references: [id])
+
+  @@index([orderId])
+  @@index([itemId])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  action      String
+  entityType  String
+  entityId    String?
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model MessageTemplate {
+  id         String                  @id @default(cuid())
+  propertyId String
+  name       String
+  category   MessageTemplateCategory
+  channel    CommunicationChannel    @default(WHATSAPP)
+  body       String
+  variables  Json?
+  isActive   Boolean                 @default(true)
+  sortOrder  Int                     @default(0)
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
+
+  property          Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  communicationLogs CommunicationLog[]
+
+  @@unique([propertyId, name])
+  @@index([propertyId])
+  @@index([category])
+  @@index([isActive])
+}
+
+model CommunicationLog {
+  id            String               @id @default(cuid())
+  propertyId    String
+  guestId       String?
+  reservationId String?
+  templateId    String?
+  channel       CommunicationChannel @default(WHATSAPP)
+  status        CommunicationStatus  @default(PREPARED)
+  recipient     String
+  message       String
+  createdBy     String?
+  createdAt     DateTime             @default(now())
+
+  property    Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  guest       Guest?           @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  reservation Reservation?     @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  template    MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId])
+  @@index([guestId])
+  @@index([reservationId])
+  @@index([templateId])
+  @@index([createdAt])
+}
+
+model AiConfiguration {
+  id                       String     @id @default(cuid())
+  propertyId               String     @unique
+  isEnabled                Boolean    @default(false)
+  provider                 AiProvider @default(OPENROUTER)
+  primaryModel             String     @default("openrouter/auto")
+  fallbackModel            String?
+  temperature              Float      @default(0.3)
+  maxTokens                Int        @default(800)
+  conciergeEnabled         Boolean    @default(false)
+  messageDraftEnabled      Boolean    @default(false)
+  operationsInsightEnabled Boolean    @default(false)
+  reportInsightEnabled     Boolean    @default(false)
+  autonomousActions        Boolean    @default(false)
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model AiPromptTemplate {
+  id         String        @id @default(cuid())
+  propertyId String
+  scope      AiPromptScope
+  title      String
+  body       String
+  isActive   Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, scope])
+  @@index([propertyId])
+  @@index([scope])
+  @@index([isActive])
+}

@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: smart_glamping
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d smart_glamping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      AUTH_SECRET: ci-smart-glamping-os-secret-change-in-production
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/smart_glamping?schema=public
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_NAME: Nusa Escape Smart Glamping OS
+      OPENROUTER_ENABLED: "false"
+      OPENROUTER_API_KEY: ""
+      OPENROUTER_PRIMARY_MODEL: openrouter/auto
+      OPENROUTER_FALLBACK_MODELS: "~anthropic/claude-sonnet-latest"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare database
+        run: |
+          npm run db:push
+          npm run db:seed
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Start app for E2E
+        run: |
+          npm run dev > .next-dev.log 2>&1 &
+          echo $! > .next-dev.pid
+          for attempt in {1..60}; do
+            if curl -fsS "$E2E_BASE_URL/login" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat .next-dev.log
+          exit 1
+
+      - name: Run E2E
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+            .next-dev.log
