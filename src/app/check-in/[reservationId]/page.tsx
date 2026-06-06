@@ -16,6 +16,7 @@ import {
 import {
   MessageTemplateCategory,
   OrderStatus,
+  PaymentMethod,
   PaymentStatus,
   RequestStatus,
   ReservationStatus,
@@ -35,6 +36,7 @@ import {
   housekeepingStatusLabels,
   housekeepingStatusTone,
   maskSensitive,
+  paymentMethodLabels,
   paymentStatusLabels,
   paymentStatusTone,
   priorityLabels,
@@ -45,6 +47,7 @@ import {
   unitStatusTone,
 } from "@/lib/labels";
 import { buildWhatsappUrl, renderMessageTemplate } from "@/lib/message-templates";
+import { calculateBalanceDue, getOrderPaidAmount, getReservationPaidAmount } from "@/lib/payments";
 import { getPrisma } from "@/lib/prisma";
 import { countNights } from "@/lib/reservations";
 
@@ -58,6 +61,17 @@ type CheckinPageProps = {
 const finalPaymentStatusOrder = [
   PaymentStatus.PARTIAL,
   PaymentStatus.PAID,
+];
+
+const paymentMethodOrder = [
+  PaymentMethod.CASH,
+  PaymentMethod.BANK_TRANSFER,
+  PaymentMethod.CREDIT_CARD,
+  PaymentMethod.DEBIT_CARD,
+  PaymentMethod.QRIS,
+  PaymentMethod.E_WALLET,
+  PaymentMethod.OTA_COLLECT,
+  PaymentMethod.OTHER,
 ];
 
 function canUseOverride(role: string) {
@@ -150,7 +164,17 @@ export default async function CheckinWizardPage({ params, searchParams }: Checki
   const orderTotal = reservation.orders
     .filter((order) => order.status !== OrderStatus.CANCELLED)
     .reduce((sum, order) => sum + Number(order.total), 0);
+  const paidOrderTotal = reservation.orders
+    .filter((order) => order.status !== OrderStatus.CANCELLED)
+    .reduce((sum, order) => sum + getOrderPaidAmount(order), 0);
+  const reservationPaid = getReservationPaidAmount({
+    amountPaid: reservation.amountPaid,
+    paymentStatus: reservation.paymentStatus,
+    totalAmount: reservation.totalAmount,
+  });
   const grandTotal = roomTotal + orderTotal;
+  const paidTotal = reservationPaid + paidOrderTotal;
+  const balanceDue = calculateBalanceDue(grandTotal, paidTotal);
   const openRequests = reservation.serviceRequests.filter(
     (request) => request.status !== RequestStatus.COMPLETED && request.status !== RequestStatus.CANCELLED,
   );
@@ -165,6 +189,7 @@ export default async function CheckinWizardPage({ params, searchParams }: Checki
     reservation.paymentStatus === PaymentStatus.PAID || reservation.paymentStatus === PaymentStatus.PARTIAL
       ? reservation.paymentStatus
       : PaymentStatus.PARTIAL;
+  const amountPaidDefault = finalPaymentDefault === PaymentStatus.PAID ? roomTotal : reservationPaid;
   const checkinAction = completeCheckinWizardAction.bind(null, reservation.id);
   const guestIdLabel = reservation.guest.idNumber
     ? `${reservation.guest.idType ?? "ID"} ${maskSensitive(reservation.guest.idNumber)}`
@@ -283,6 +308,8 @@ export default async function CheckinWizardPage({ params, searchParams }: Checki
                   <MoneyRow label="Room total" value={roomTotal} />
                   <MoneyRow label="Extra charges" value={orderTotal} />
                   <MoneyRow label="Grand total" value={grandTotal} strong />
+                  <MoneyRow label="Collected" value={paidTotal} />
+                  <MoneyRow label="Balance due" value={balanceDue} strong />
                 </div>
                 <div className="space-y-3">
                   <div className="rounded-[22px] surface-inset p-4">
@@ -304,6 +331,38 @@ export default async function CheckinWizardPage({ params, searchParams }: Checki
                         </option>
                       ))}
                     </select>
+                  </label>
+                  <label className="block rounded-[22px] surface-inset p-4">
+                    <span className="text-xs font-bold uppercase tracking-normal text-white/42">Amount paid for room</span>
+                    <input
+                      name="amountPaid"
+                      type="number"
+                      min="0"
+                      defaultValue={amountPaidDefault}
+                      className="mt-3 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none"
+                    />
+                  </label>
+                  <label className="block rounded-[22px] surface-inset p-4">
+                    <span className="text-xs font-bold uppercase tracking-normal text-white/42">Payment method</span>
+                    <select
+                      name="paymentMethod"
+                      defaultValue={PaymentMethod.BANK_TRANSFER}
+                      className="mt-3 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none"
+                    >
+                      {paymentMethodOrder.map((method) => (
+                        <option key={method} value={method}>
+                          {paymentMethodLabels[method]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block rounded-[22px] surface-inset p-4">
+                    <span className="text-xs font-bold uppercase tracking-normal text-white/42">Payment reference</span>
+                    <input
+                      name="paymentReference"
+                      placeholder="Transfer ref, QRIS id, card approval..."
+                      className="mt-3 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none placeholder:text-white/34"
+                    />
                   </label>
                 </div>
               </div>

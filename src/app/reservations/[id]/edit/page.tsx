@@ -92,8 +92,8 @@ export default async function EditReservationPage({ params, searchParams }: Edit
 
       <div className="mt-5">
         <h2 className="text-3xl font-black tracking-normal text-white">Edit Reservasi {reservation.bookingCode}</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-white/62">
-          Ubah guest, unit, tanggal, status, payment, atau catatan. Sistem tetap memblokir overlap aktif.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/62">
+          Ubah guest, unit, tanggal, status, payment, deposit, atau catatan. Sistem tetap memblokir overlap aktif.
         </p>
       </div>
 
@@ -167,6 +167,10 @@ export default async function EditReservationPage({ params, searchParams }: Edit
                   </option>
                 ))}
               </SelectField>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <TextField label="Amount paid / deposit" name="amountPaid" type="number" min="0" defaultValue={Number(reservation.amountPaid)} />
+              <TextArea label="Payment notes" name="paymentNotes" defaultValue={reservation.paymentNotes ?? ""} />
             </div>
             <TextArea label="Internal notes" name="notes" defaultValue={reservation.notes ?? ""} />
             <button className="gold-gradient inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[22px] px-4 text-sm font-black text-[#041015]">

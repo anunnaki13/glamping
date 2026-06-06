@@ -7,7 +7,9 @@ import {
   HousekeepingStatus,
   MessageTemplateCategory,
   OrderStatus,
+  PaymentMethod,
   PaymentStatus,
+  PaymentTransactionType,
   PosCategory,
   PrismaClient,
   Priority,
@@ -257,10 +259,17 @@ async function main() {
     const unit = unitByCode.get(unitCode);
     const guest = guestByName.get(guestName);
     if (!unit || !guest) continue;
+    const amountPaid =
+      paymentStatus === PaymentStatus.PAID
+        ? totalAmount
+        : paymentStatus === PaymentStatus.PARTIAL
+          ? Math.round(totalAmount * 0.35)
+          : 0;
 
-    await prisma.reservation.create({
+    const reservation = await prisma.reservation.create({
       data: {
         bookingCode,
+        invoiceNumber: `INV-${bookingCode}`,
         guestId: guest.id,
         unitId: unit.id,
         checkInDate: setHours(addDays(today, inOffset), 14),
@@ -272,8 +281,26 @@ async function main() {
         paymentStatus,
         roomRate: (totalAmount / Math.max(1, outOffset - inOffset)).toFixed(2),
         totalAmount: String(totalAmount),
+        amountPaid: String(amountPaid),
+        paymentNotes: amountPaid > 0 ? `Seed deposit/payment recorded: ${amountPaid}.` : null,
       },
     });
+
+    if (amountPaid > 0) {
+      await prisma.paymentTransaction.create({
+        data: {
+          code: `PAY-SEED-${bookingCode}`,
+          propertyId: property.id,
+          reservationId: reservation.id,
+          type: PaymentTransactionType.PAYMENT,
+          method: paymentStatus === PaymentStatus.PAID ? PaymentMethod.CREDIT_CARD : PaymentMethod.BANK_TRANSFER,
+          amount: String(amountPaid),
+          reference: `SEED-${bookingCode}`,
+          note: "Initial seeded payment ledger transaction.",
+          recordedBy: "Seeder",
+        },
+      });
+    }
   }
 
   const reservations = await prisma.reservation.findMany({ include: { guest: true, unit: true } });
@@ -350,6 +377,7 @@ async function clearDatabase() {
   await prisma.aiPromptTemplate.deleteMany();
   await prisma.aiConfiguration.deleteMany();
   await prisma.communicationLog.deleteMany();
+  await prisma.paymentTransaction.deleteMany();
   await prisma.messageTemplate.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();

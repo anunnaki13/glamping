@@ -19,6 +19,8 @@ export type Permission =
   | "ai:write"
   | "pos:read"
   | "pos:write"
+  | "payment:read"
+  | "payment:write"
   | "report:read"
   | "activity:read"
   | "settings:read"
@@ -45,6 +47,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "ai:write",
     "pos:read",
     "pos:write",
+    "payment:read",
+    "payment:write",
     "report:read",
     "activity:read",
     "settings:read",
@@ -70,6 +74,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "ai:write",
     "pos:read",
     "pos:write",
+    "payment:read",
+    "payment:write",
     "report:read",
     "activity:read",
     "settings:read",
@@ -91,6 +97,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "message:write",
     "ai:read",
     "pos:read",
+    "payment:read",
+    "payment:write",
     "report:read",
   ],
   HOUSEKEEPING: [

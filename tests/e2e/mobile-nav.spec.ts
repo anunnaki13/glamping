@@ -10,7 +10,7 @@ test("owner mobile navigation exposes every permitted module and keeps active it
   const nav = page.getByRole("navigation", { name: "Mobile primary navigation" });
   await expect(nav).toBeVisible();
 
-  for (const label of ["Calendar", "Units", "Guests", "Messages", "Catalog", "AI", "Activity", "Settings"]) {
+  for (const label of ["Calendar", "Units", "Guests", "Messages", "Catalog", "Payments", "AI", "Activity", "Settings"]) {
     await expect(nav.getByRole("link", { name: label })).toBeVisible();
   }
 

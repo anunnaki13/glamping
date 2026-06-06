@@ -2,7 +2,10 @@ import type {
   BookingSource,
   HousekeepingStatus,
   OrderStatus,
+  PaymentMethod,
   PaymentStatus,
+  PaymentTransactionStatus,
+  PaymentTransactionType,
   PosCategory,
   Priority,
   RequestStatus,
@@ -109,6 +112,39 @@ export const paymentStatusTone: Record<PaymentStatus, "success" | "warning" | "d
   PARTIAL: "warning",
   PAID: "success",
   REFUNDED: "muted",
+};
+
+export const paymentMethodLabels: Record<PaymentMethod, string> = {
+  CASH: "Cash",
+  BANK_TRANSFER: "Bank Transfer",
+  CREDIT_CARD: "Credit Card",
+  DEBIT_CARD: "Debit Card",
+  QRIS: "QRIS",
+  E_WALLET: "E-Wallet",
+  OTA_COLLECT: "OTA Collect",
+  OTHER: "Other",
+};
+
+export const paymentTransactionTypeLabels: Record<PaymentTransactionType, string> = {
+  PAYMENT: "Payment",
+  REFUND: "Refund",
+  ADJUSTMENT: "Adjustment",
+};
+
+export const paymentTransactionTypeTone: Record<PaymentTransactionType, "success" | "warning" | "danger" | "info" | "muted"> = {
+  PAYMENT: "success",
+  REFUND: "warning",
+  ADJUSTMENT: "info",
+};
+
+export const paymentTransactionStatusLabels: Record<PaymentTransactionStatus, string> = {
+  POSTED: "Posted",
+  VOIDED: "Voided",
+};
+
+export const paymentTransactionStatusTone: Record<PaymentTransactionStatus, "success" | "warning" | "danger" | "info" | "muted"> = {
+  POSTED: "success",
+  VOIDED: "muted",
 };
 
 export const bookingSourceLabels: Record<BookingSource, string> = {

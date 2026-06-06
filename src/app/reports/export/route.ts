@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { OrderStatus } from "@/generated/prisma/enums";
 import { getCurrentSession } from "@/lib/auth";
 import { formatDateInput, getReportData, parseReportRange } from "@/lib/reports";
 import { canViewStayFinancialData, hasPermission } from "@/lib/permissions";
 import { redirectToLogin, redirectWithRouteFeedback } from "@/lib/route-feedback";
+import {
+  calculateBalanceDue,
+  getInvoiceNumber,
+  getOrderPaidAmount,
+  getReservationPaidAmount,
+} from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +39,23 @@ export async function GET(request: NextRequest) {
     to: request.nextUrl.searchParams.get("to") ?? undefined,
   });
   const report = await getReportData(session.propertyId, range);
+  const getFolioSnapshot = (reservation: (typeof report.recentReservations)[number]) => {
+    const activeOrders = reservation.orders.filter((order) => order.status !== OrderStatus.CANCELLED);
+    const orderTotal = activeOrders.reduce((sum, order) => sum + Number(order.total), 0);
+    const paidTotal =
+      getReservationPaidAmount({
+        amountPaid: reservation.amountPaid,
+        paymentStatus: reservation.paymentStatus,
+        totalAmount: reservation.totalAmount,
+      }) + activeOrders.reduce((sum, order) => sum + getOrderPaidAmount(order), 0);
+    const folioTotal = Number(reservation.totalAmount) + orderTotal;
+
+    return {
+      balanceDue: calculateBalanceDue(folioTotal, paidTotal),
+      folioTotal,
+      paidTotal,
+    };
+  };
   const rows: Array<Array<string | number>> = [
     ["Smart Glamping OS Report"],
     ["Property", session.propertyName],
@@ -47,6 +71,7 @@ export async function GET(request: NextRequest) {
     ["Reservation Revenue", report.summary.reservationRevenue],
     ["Order Revenue", report.summary.orderRevenue],
     ["Total Revenue", report.summary.totalRevenue],
+    ["Outstanding Balance", report.summary.outstandingBalance],
     ["ADR", report.summary.adr],
     ["RevPAR", report.summary.revPar],
     ["Total Reservations", report.summary.totalReservations],
@@ -78,16 +103,24 @@ export async function GET(request: NextRequest) {
     ...report.topItems.map((item) => [item.name, item.quantity, item.revenue]),
     [],
     ["Recent Reservations"],
-    ["Booking Code", "Guest", "Unit", "Check-in", "Check-out", "Status", "Revenue"],
-    ...report.recentReservations.map((reservation) => [
-      reservation.bookingCode,
-      reservation.guest.fullName,
-      reservation.unit?.code ?? "",
-      formatDateInput(reservation.checkInDate),
-      formatDateInput(reservation.checkOutDate),
-      reservation.status,
-      Number(reservation.totalAmount),
-    ]),
+    ["Booking Code", "Invoice", "Guest", "Unit", "Check-in", "Check-out", "Status", "Payment", "Folio Total", "Paid", "Balance Due"],
+    ...report.recentReservations.map((reservation) => {
+      const folio = getFolioSnapshot(reservation);
+
+      return [
+        reservation.bookingCode,
+        getInvoiceNumber(reservation),
+        reservation.guest.fullName,
+        reservation.unit?.code ?? "",
+        formatDateInput(reservation.checkInDate),
+        formatDateInput(reservation.checkOutDate),
+        reservation.status,
+        reservation.paymentStatus,
+        folio.folioTotal,
+        folio.paidTotal,
+        folio.balanceDue,
+      ];
+    }),
   ];
   const csv = toCsv(rows);
   const filename = `smart-glamping-report-${range.fromInput}-${range.toInput}.csv`;

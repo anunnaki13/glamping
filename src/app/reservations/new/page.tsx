@@ -72,7 +72,7 @@ export default async function NewReservationPage({ searchParams }: NewReservatio
         <div>
           <h2 className="text-3xl font-black tracking-normal text-white">Buat Reservasi</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/62">
-            Pilih tanggal, guest, unit, source, dan status pembayaran. Sistem akan memblokir double booking saat disimpan.
+            Pilih tanggal, guest, unit, source, status pembayaran, dan nominal deposit. Sistem akan memblokir double booking saat disimpan.
           </p>
         </div>
         <Link className="text-sm font-black text-[#b8fbff]" href="/guests/new">
@@ -143,13 +143,17 @@ export default async function NewReservationPage({ searchParams }: NewReservatio
                   </option>
                 ))}
               </SelectField>
-              <SelectField label="Payment status" name="paymentStatus" defaultValue={PaymentStatus.PARTIAL} required>
+              <SelectField label="Payment status" name="paymentStatus" defaultValue={PaymentStatus.UNPAID} required>
                 {Object.values(PaymentStatus).map((status) => (
                   <option key={status} value={status}>
                     {paymentStatusLabels[status]}
                   </option>
                 ))}
               </SelectField>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <TextField label="Amount paid / deposit" name="amountPaid" type="number" min="0" defaultValue="0" />
+              <TextArea label="Payment notes" name="paymentNotes" placeholder="Transfer ref, deposit method, invoice note..." />
             </div>
             <TextArea label="Internal notes" name="notes" placeholder="Special request, ETA, deposit notes..." />
             <button className="gold-gradient inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[22px] px-4 text-sm font-black text-[#041015]">

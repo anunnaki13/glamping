@@ -7,7 +7,7 @@ import {
   ReceiptText,
   TrendingUp,
 } from "lucide-react";
-import { UserRole } from "@/generated/prisma/enums";
+import { OrderStatus, UserRole } from "@/generated/prisma/enums";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionFeedbackBanner } from "@/components/ui/action-feedback-banner";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -16,6 +16,7 @@ import { getActionFeedback, type ActionFeedback, type ActionFeedbackSearchParams
 import { formatDateId, formatIdr } from "@/lib/formatters";
 import { getReportData, parseReportRange } from "@/lib/reports";
 import { requirePagePermission } from "@/lib/action-guard";
+import { calculateBalanceDue, getOrderPaidAmount, getReservationPaidAmount } from "@/lib/payments";
 import { canViewOperationalFinancialData, canViewStayFinancialData } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,22 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const exportHref = `/reports/export?from=${range.fromInput}&to=${range.toInput}`;
   const maxDailyRevenue = Math.max(1, ...report.dailyRows.map((row) => row.totalRevenue));
   const maxSourceCount = Math.max(1, ...report.bookingSources.map((source) => source.count));
+  const getFolioSnapshot = (reservation: (typeof report.recentReservations)[number]) => {
+    const activeOrders = reservation.orders.filter((order) => order.status !== OrderStatus.CANCELLED);
+    const orderTotal = activeOrders.reduce((sum, order) => sum + Number(order.total), 0);
+    const paidTotal =
+      getReservationPaidAmount({
+        amountPaid: reservation.amountPaid,
+        paymentStatus: reservation.paymentStatus,
+        totalAmount: reservation.totalAmount,
+      }) + activeOrders.reduce((sum, order) => sum + getOrderPaidAmount(order), 0);
+    const folioTotal = Number(reservation.totalAmount) + orderTotal;
+
+    return {
+      balanceDue: calculateBalanceDue(folioTotal, paidTotal),
+      folioTotal,
+    };
+  };
 
   return (
     <AppShell>
@@ -85,7 +102,14 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
       <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard title="Occupancy" value={`${report.summary.occupancyRate}%`} detail={`${report.summary.occupiedRoomNights} / ${report.summary.roomNightsAvailable} room-nights`} icon={<PieChart className="size-5" />} />
-        {canViewStayFinancials ? <MetricCard title="Total Revenue" value={formatIdr(report.summary.totalRevenue)} detail={`Rooms ${formatIdr(report.summary.reservationRevenue)}`} icon={<TrendingUp className="size-5" />} /> : null}
+        {canViewStayFinancials ? (
+          <MetricCard
+            title="Total Revenue"
+            value={formatIdr(report.summary.totalRevenue)}
+            detail={`Outstanding ${formatIdr(report.summary.outstandingBalance)}`}
+            icon={<TrendingUp className="size-5" />}
+          />
+        ) : null}
         <MetricCard
           title={canViewOperationalFinancials ? "Order Revenue" : "Recent Orders"}
           value={canViewOperationalFinancials ? formatIdr(report.summary.orderRevenue) : String(report.recentOrders.length)}
@@ -242,21 +266,30 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                   <th className="px-4 py-2">Booking</th>
                   <th className="px-4 py-2">Guest</th>
                   <th className="px-4 py-2">Stay</th>
-                  {canViewStayFinancials ? <th className="px-4 py-2">Revenue</th> : null}
+                  {canViewStayFinancials ? <th className="px-4 py-2">Revenue / Due</th> : null}
                 </tr>
               </thead>
               <tbody>
-                {report.recentReservations.map((reservation) => (
-                  <tr key={reservation.id} className="surface-row text-sm font-semibold text-white/76">
-                    <td className="rounded-l-[20px] px-4 py-4 font-mono font-black text-[#b8fbff]">{reservation.bookingCode}</td>
-                    <td className="px-4 py-4">
-                      <p className="font-black text-white">{reservation.guest.fullName}</p>
-                      <p className="mt-1 text-xs text-white/50">{reservation.unit?.code ?? "Unassigned"}</p>
-                    </td>
-                    <td className={`${canViewStayFinancials ? "px-4 py-4" : "rounded-r-[20px] px-4 py-4"}`}>{formatDateId(reservation.checkInDate)} - {formatDateId(reservation.checkOutDate)}</td>
-                    {canViewStayFinancials ? <td className="rounded-r-[20px] px-4 py-4 font-black text-white">{formatIdr(Number(reservation.totalAmount))}</td> : null}
-                  </tr>
-                ))}
+                {report.recentReservations.map((reservation) => {
+                  const folio = getFolioSnapshot(reservation);
+
+                  return (
+                    <tr key={reservation.id} className="surface-row text-sm font-semibold text-white/76">
+                      <td className="rounded-l-[20px] px-4 py-4 font-mono font-black text-[#b8fbff]">{reservation.bookingCode}</td>
+                      <td className="px-4 py-4">
+                        <p className="font-black text-white">{reservation.guest.fullName}</p>
+                        <p className="mt-1 text-xs text-white/50">{reservation.unit?.code ?? "Unassigned"}</p>
+                      </td>
+                      <td className={`${canViewStayFinancials ? "px-4 py-4" : "rounded-r-[20px] px-4 py-4"}`}>{formatDateId(reservation.checkInDate)} - {formatDateId(reservation.checkOutDate)}</td>
+                      {canViewStayFinancials ? (
+                        <td className="rounded-r-[20px] px-4 py-4">
+                          <p className="font-black text-white">{formatIdr(folio.folioTotal)}</p>
+                          <p className="mt-1 text-xs font-semibold text-white/48">Due {formatIdr(folio.balanceDue)}</p>
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

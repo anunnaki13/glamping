@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.15.15 - Payment Ledger Module
+
+- Added payment ledger schema with transaction type, method, posted/voided status, references, notes, recorded-by, and reservation linkage.
+- Added finance-only `payment:read` and `payment:write` permissions plus Payments navigation on desktop and mobile.
+- Added `/payments` module with cashflow metrics, transaction posting, refund/adjustment support, search, and void audit controls.
+- Added reservation detail payment ledger with inline post/refund and void workflows.
+- Connected check-in and check-out payment amount changes to ledger delta transactions with method/reference capture.
+- Seeded and locally backfilled payment transactions so demo reservations have ledger history.
+- Added E2E coverage for payment posting, finance access control, and mobile Payments navigation.
+
+## 0.15.14 - Payment Invoice Readiness
+
+- Added reservation invoice number, amount paid/deposit, and payment notes fields to the database and seed data.
+- Added invoice-ready reservation detail surfaces with folio total, collected amount, paid orders, and balance due.
+- Added a print-friendly reservation invoice page with room, discount, order, payment, and balance summaries.
+- Updated reservation create/edit, check-in, and check-out flows to capture amount paid and keep paid checkout orders in sync.
+- Added outstanding balance visibility to reservation boards, reports, and CSV exports.
+- Added Playwright coverage for the reservation invoice flow.
+
 ## 0.15.13 - CI Automation
 
 - Added GitHub Actions CI with PostgreSQL service, npm install, Playwright browser install, database push/seed, typecheck, lint, build, dev-server startup, and E2E execution.

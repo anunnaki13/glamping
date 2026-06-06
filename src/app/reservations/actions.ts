@@ -13,6 +13,7 @@ import {
 } from "@/generated/prisma/enums";
 import { activityActor, requirePermission } from "@/lib/action-guard";
 import { redirectWithActionError, redirectWithActionSuccess } from "@/lib/action-feedback";
+import { getInvoiceNumber, normalizeReservationPaymentInput } from "@/lib/payments";
 import { getPrisma } from "@/lib/prisma";
 import {
   assertUnitAvailable,
@@ -70,7 +71,9 @@ const reservationFormSchema = z.object({
   paymentStatus: z.enum(paymentStatusValues).default(PaymentStatus.UNPAID),
   roomRate: z.coerce.number().min(0),
   discount: z.coerce.number().min(0).default(0),
+  amountPaid: z.coerce.number().min(0).default(0),
   notes: z.string().trim().optional(),
+  paymentNotes: z.string().trim().max(800).optional(),
 });
 
 function formDataObject(formData: FormData) {
@@ -102,6 +105,11 @@ function parseReservationPayload(formData: FormData) {
 
   const nights = countNights(checkInDate, checkOutDate);
   const totalAmount = calculateReservationTotal(parsed.roomRate, nights, parsed.discount);
+  const amountPaid = normalizeReservationPaymentInput({
+    amountPaid: parsed.amountPaid,
+    paymentStatus: parsed.paymentStatus,
+    totalAmount,
+  });
 
   return {
     ...parsed,
@@ -109,6 +117,7 @@ function parseReservationPayload(formData: FormData) {
     checkOutDate,
     nights,
     totalAmount,
+    amountPaid,
   };
 }
 
@@ -216,6 +225,7 @@ function revalidateReservationSurfaces(reservationId?: string, unitId?: string |
   if (reservationId) {
     revalidatePath(`/reservations/${reservationId}`);
     revalidatePath(`/reservations/${reservationId}/edit`);
+    revalidatePath(`/reservations/${reservationId}/invoice`);
   }
 
   if (unitId) {
@@ -325,6 +335,7 @@ export async function createReservationAction(formData: FormData) {
   const reservation = await prisma.reservation.create({
     data: {
       bookingCode,
+      invoiceNumber: getInvoiceNumber({ bookingCode }),
       guestId: payload.guestId,
       unitId: payload.unitId,
       checkInDate: payload.checkInDate,
@@ -337,7 +348,9 @@ export async function createReservationAction(formData: FormData) {
       roomRate: String(payload.roomRate),
       discount: String(payload.discount),
       totalAmount: String(payload.totalAmount),
+      amountPaid: String(payload.amountPaid),
       notes: payload.notes || null,
+      paymentNotes: payload.paymentNotes || null,
     },
   });
 
@@ -409,7 +422,9 @@ export async function updateReservationAction(reservationId: string, formData: F
       roomRate: String(payload.roomRate),
       discount: String(payload.discount),
       totalAmount: String(payload.totalAmount),
+      amountPaid: String(payload.amountPaid),
       notes: payload.notes || null,
+      paymentNotes: payload.paymentNotes || null,
     },
     include: { guest: true },
   });

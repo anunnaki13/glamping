@@ -21,6 +21,7 @@ import {
   requestTypeLabels,
   unitStatusLabels,
 } from "@/lib/labels";
+import { calculateBalanceDue, getOrderPaidAmount, getReservationPaidAmount } from "@/lib/payments";
 import { getPrisma } from "@/lib/prisma";
 
 export type ReportRange = {
@@ -71,6 +72,7 @@ export async function getReportData(propertyId: string, range: ReportRange) {
       include: {
         guest: true,
         unit: true,
+        orders: true,
       },
       orderBy: { checkInDate: "asc" },
     }),
@@ -151,6 +153,19 @@ export async function getReportData(propertyId: string, range: ReportRange) {
   const adr = occupiedRoomNights > 0 ? Math.round(reservationRevenue / occupiedRoomNights) : 0;
   const revPar = roomNightsAvailable > 0 ? Math.round(totalRevenue / roomNightsAvailable) : 0;
   const requestsInRange = serviceRequests.filter((request) => isInRange(request.createdAt, range.from, range.to));
+  const reservationsInRange = reservations.filter((reservation) => isInRange(reservation.createdAt, range.from, range.to));
+  const outstandingBalance = reservationsInRange.reduce((sum, reservation) => {
+    const activeOrders = reservation.orders.filter((order) => order.status !== OrderStatus.CANCELLED);
+    const orderTotal = activeOrders.reduce((orderSum, order) => orderSum + Number(order.total), 0);
+    const paidTotal =
+      getReservationPaidAmount({
+        amountPaid: reservation.amountPaid,
+        paymentStatus: reservation.paymentStatus,
+        totalAmount: reservation.totalAmount,
+      }) + activeOrders.reduce((orderSum, order) => orderSum + getOrderPaidAmount(order), 0);
+
+    return sum + calculateBalanceDue(Number(reservation.totalAmount) + orderTotal, paidTotal);
+  }, 0);
   const completedRequests = requestsInRange.filter((request) => request.status === RequestStatus.COMPLETED).length;
   const slaCompletionRate = requestsInRange.length > 0 ? Math.round((completedRequests / requestsInRange.length) * 100) : 0;
 
@@ -165,9 +180,10 @@ export async function getReportData(propertyId: string, range: ReportRange) {
       reservationRevenue,
       orderRevenue,
       totalRevenue,
+      outstandingBalance,
       adr,
       revPar,
-      totalReservations: reservations.filter((reservation) => isInRange(reservation.createdAt, range.from, range.to)).length,
+      totalReservations: reservationsInRange.length,
       openRequests: serviceRequests.filter((request) => request.status !== RequestStatus.COMPLETED && request.status !== RequestStatus.CANCELLED).length,
       slaCompletionRate,
     },
@@ -181,7 +197,7 @@ export async function getReportData(propertyId: string, range: ReportRange) {
     housekeepingStatus: aggregateEnum(Object.values(HousekeepingStatus), housekeepingTasks, "status", housekeepingStatusLabels),
     topItems: aggregateOrderItems(orders),
     posCategories: aggregatePosCategories(orders),
-    recentReservations: reservations.filter((reservation) => isInRange(reservation.createdAt, range.from, range.to)).slice(0, 10),
+    recentReservations: reservationsInRange.slice(0, 10),
     recentRequests: requestsInRange.slice(0, 10),
     recentOrders: orders.slice(0, 10),
   };

@@ -1,10 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, Edit, LogIn, LogOut, MessageCircle, UserRound } from "lucide-react";
-import { ReservationStatus, UserRole } from "@/generated/prisma/enums";
+import { ArrowLeft, CalendarDays, Edit, LogIn, LogOut, MessageCircle, ReceiptText, UserRound } from "lucide-react";
+import {
+  OrderStatus,
+  PaymentMethod,
+  PaymentTransactionStatus,
+  PaymentTransactionType,
+  ReservationStatus,
+  UserRole,
+} from "@/generated/prisma/enums";
 import {
   cancelReservationAction,
 } from "@/app/reservations/actions";
+import {
+  createPaymentTransactionAction,
+  voidPaymentTransactionAction,
+} from "@/app/payments/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionFeedbackBanner } from "@/components/ui/action-feedback-banner";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -17,8 +28,13 @@ import {
   maskContact,
   orderStatusLabels,
   orderStatusTone,
+  paymentMethodLabels,
   paymentStatusLabels,
   paymentStatusTone,
+  paymentTransactionStatusLabels,
+  paymentTransactionStatusTone,
+  paymentTransactionTypeLabels,
+  paymentTransactionTypeTone,
   priorityLabels,
   priorityTone,
   requestStatusLabels,
@@ -37,8 +53,32 @@ import {
   canViewStayFinancialData,
   hasPermission,
 } from "@/lib/permissions";
+import {
+  calculateBalanceDue,
+  getInvoiceNumber,
+  getOrderPaidAmount,
+  getPaymentTransactionSignedAmount,
+  getReservationPaidAmount,
+} from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
+
+const paymentMethodOrder = [
+  PaymentMethod.CASH,
+  PaymentMethod.BANK_TRANSFER,
+  PaymentMethod.CREDIT_CARD,
+  PaymentMethod.DEBIT_CARD,
+  PaymentMethod.QRIS,
+  PaymentMethod.E_WALLET,
+  PaymentMethod.OTA_COLLECT,
+  PaymentMethod.OTHER,
+];
+
+const paymentTransactionTypeOrder = [
+  PaymentTransactionType.PAYMENT,
+  PaymentTransactionType.REFUND,
+  PaymentTransactionType.ADJUSTMENT,
+];
 
 type ReservationDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -53,6 +93,8 @@ export default async function ReservationDetailPage({ params, searchParams }: Re
   const canWrite = hasPermission(role, "reservation:write");
   const canManageCheckIn = hasPermission(role, "checkin:write");
   const canViewFinancials = canViewStayFinancialData(role);
+  const canViewPayments = hasPermission(role, "payment:read");
+  const canManagePayments = hasPermission(role, "payment:write");
   const canViewOrderFinancials = canViewOperationalFinancialData(role);
   const canViewGuestContact = canViewGuestContactData(role);
   const canMessageGuest = canInitiateGuestMessages(role);
@@ -63,6 +105,7 @@ export default async function ReservationDetailPage({ params, searchParams }: Re
       unit: { include: { unitType: true } },
       serviceRequests: { orderBy: { createdAt: "desc" } },
       orders: { orderBy: { createdAt: "desc" }, include: { items: true } },
+      paymentTransactions: { orderBy: { postedAt: "desc" } },
     },
   });
 
@@ -90,12 +133,25 @@ export default async function ReservationDetailPage({ params, searchParams }: Re
     `Halo ${reservation.guest.fullName}, reservasi ${reservation.bookingCode} di Nusa Escape telah tercatat untuk ${formatDateId(reservation.checkInDate)} - ${formatDateId(reservation.checkOutDate)}.`,
   );
   const whatsappUrl = canMessageGuest && reservation.guest.phone ? `https://wa.me/${reservation.guest.phone.replace(/\D/g, "")}?text=${whatsappText}` : null;
+  const activeOrders = reservation.orders.filter((order) => order.status !== OrderStatus.CANCELLED);
+  const reservationTotal = Number(reservation.totalAmount);
+  const reservationPaid = getReservationPaidAmount({
+    amountPaid: reservation.amountPaid,
+    paymentStatus: reservation.paymentStatus,
+    totalAmount: reservation.totalAmount,
+  });
+  const orderTotal = activeOrders.reduce((sum, order) => sum + Number(order.total), 0);
+  const paidOrderTotal = activeOrders.reduce((sum, order) => sum + getOrderPaidAmount(order), 0);
+  const folioTotal = reservationTotal + orderTotal;
+  const paidTotal = reservationPaid + paidOrderTotal;
+  const balanceDue = calculateBalanceDue(folioTotal, paidTotal);
+  const invoiceNumber = getInvoiceNumber(reservation);
 
   const timeline = [
     { title: "Reservation created", value: formatDateId(reservation.createdAt) },
     { title: `Status: ${reservationStatusLabels[reservation.status]}`, value: bookingSourceLabels[reservation.source] },
     ...(canViewFinancials
-      ? [{ title: `Payment: ${paymentStatusLabels[reservation.paymentStatus]}`, value: formatIdr(Number(reservation.totalAmount)) }]
+      ? [{ title: `Invoice: ${invoiceNumber}`, value: `Balance ${formatIdr(balanceDue)}` }]
       : [{ title: "Operational scope", value: reservation.unit?.code ?? "Unassigned" }]),
   ];
 
@@ -136,6 +192,15 @@ export default async function ReservationDetailPage({ params, searchParams }: Re
                 >
                   <LogOut className="size-5" />
                   Check-out
+                </Link>
+              ) : null}
+              {canViewFinancials ? (
+                <Link
+                  href={`/reservations/${reservation.id}/invoice`}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[22px] surface-field px-4 text-sm font-black text-white"
+                >
+                  <ReceiptText className="size-5" />
+                  Invoice
                 </Link>
               ) : null}
               {canEdit ? (
@@ -211,11 +276,21 @@ export default async function ReservationDetailPage({ params, searchParams }: Re
           <GlassCard className="p-5">
             <h3 className="text-lg font-black text-white">Financial Summary</h3>
             <div className="mt-4 space-y-3">
+              <InfoRow label="Invoice" value={invoiceNumber} />
               <InfoRow label="Room rate" value={formatIdr(Number(reservation.roomRate))} />
               <InfoRow label="Discount" value={formatIdr(Number(reservation.discount))} />
-              <InfoRow label="Reservation total" value={formatIdr(Number(reservation.totalAmount))} strong />
-              <InfoRow label="Orders" value={formatIdr(reservation.orders.reduce((sum, order) => sum + Number(order.total), 0))} />
+              <InfoRow label="Reservation total" value={formatIdr(reservationTotal)} />
+              <InfoRow label="Orders" value={formatIdr(orderTotal)} />
+              <InfoRow label="Amount collected" value={formatIdr(reservationPaid)} />
+              <InfoRow label="Paid orders" value={formatIdr(paidOrderTotal)} />
+              <InfoRow label="Folio total" value={formatIdr(folioTotal)} strong />
+              <InfoRow label="Balance due" value={formatIdr(balanceDue)} strong />
             </div>
+            {reservation.paymentNotes ? (
+              <p className="mt-4 rounded-[22px] surface-inset p-4 text-sm font-semibold leading-6 text-white/58">
+                {reservation.paymentNotes}
+              </p>
+            ) : null}
           </GlassCard>
         ) : null}
 
@@ -231,6 +306,107 @@ export default async function ReservationDetailPage({ params, searchParams }: Re
           </div>
         </GlassCard>
       </section>
+
+      {canViewPayments ? (
+        <section className="mt-5 grid gap-5 xl:grid-cols-[1fr_380px]">
+          <GlassCard variant="strong" className="p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h3 className="text-lg font-black text-white">Payment Ledger</h3>
+                <p className="mt-1 text-sm font-semibold text-white/50">Posted, refund, adjustment, dan void audit untuk reservasi ini.</p>
+              </div>
+              <Link
+                href="/payments"
+                className="inline-flex min-h-10 items-center justify-center rounded-[16px] border border-[#29f1ff]/24 bg-[#29f1ff]/10 px-3 text-xs font-black text-[#b8fbff]"
+              >
+                Payment Board
+              </Link>
+            </div>
+            <div className="mt-4 space-y-3">
+              {reservation.paymentTransactions.map((transaction) => {
+                const voidAction = voidPaymentTransactionAction.bind(null, transaction.id);
+                const signedAmount = getPaymentTransactionSignedAmount(transaction);
+
+                return (
+                  <div key={transaction.id} className="rounded-[22px] surface-inset p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-mono text-sm font-black text-[#b8fbff]">{transaction.code}</p>
+                          <StatusBadge label={paymentTransactionTypeLabels[transaction.type]} tone={paymentTransactionTypeTone[transaction.type]} />
+                          <StatusBadge label={paymentTransactionStatusLabels[transaction.status]} tone={paymentTransactionStatusTone[transaction.status]} />
+                        </div>
+                        <p className="mt-2 text-xs font-semibold text-white/50">
+                          {paymentMethodLabels[transaction.method]} - {formatDateId(transaction.postedAt)} - {transaction.recordedBy ?? "System"}
+                        </p>
+                        {transaction.reference || transaction.note || transaction.voidReason ? (
+                          <p className="mt-2 max-w-3xl text-xs font-semibold leading-5 text-white/46">
+                            {[transaction.reference, transaction.note, transaction.voidReason ? `Void: ${transaction.voidReason}` : null].filter(Boolean).join(" - ")}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="min-w-[220px] text-left lg:text-right">
+                        <p className={signedAmount < 0 ? "text-lg font-black text-amber-100" : "text-lg font-black text-white"}>
+                          {formatIdr(signedAmount)}
+                        </p>
+                        {canManagePayments && transaction.status === PaymentTransactionStatus.POSTED ? (
+                          <form action={voidAction} className="mt-3 grid gap-2 lg:ml-auto lg:max-w-[230px]">
+                            <input type="hidden" name="returnTo" value={`/reservations/${reservation.id}`} />
+                            <input
+                              name="voidReason"
+                              minLength={8}
+                              required
+                              placeholder="Void reason"
+                              className="min-h-10 rounded-[16px] surface-field px-3 text-xs font-bold text-white outline-none placeholder:text-white/34"
+                            />
+                            <button className="min-h-10 rounded-[16px] border border-red-300/20 bg-red-500/10 px-3 text-xs font-black text-red-100">
+                              Void Transaction
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {reservation.paymentTransactions.length === 0 ? <EmptyLine label="Belum ada transaksi payment ledger untuk reservasi ini." /> : null}
+            </div>
+          </GlassCard>
+
+          {canManagePayments ? (
+            <GlassCard className="p-5">
+              <h3 className="text-lg font-black text-white">Post Payment</h3>
+              <p className="mt-1 text-sm font-semibold leading-6 text-white/50">Posting akan menyinkronkan paid amount dan status payment.</p>
+              <form action={createPaymentTransactionAction} className="mt-5 space-y-4">
+                <input type="hidden" name="reservationId" value={reservation.id} />
+                <input type="hidden" name="returnTo" value={`/reservations/${reservation.id}`} />
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <SelectField name="type" label="Type" defaultValue={PaymentTransactionType.PAYMENT}>
+                    {paymentTransactionTypeOrder.map((type) => (
+                      <option key={type} value={type}>
+                        {paymentTransactionTypeLabels[type]}
+                      </option>
+                    ))}
+                  </SelectField>
+                  <SelectField name="method" label="Method" defaultValue={PaymentMethod.BANK_TRANSFER}>
+                    {paymentMethodOrder.map((method) => (
+                      <option key={method} value={method}>
+                        {paymentMethodLabels[method]}
+                      </option>
+                    ))}
+                  </SelectField>
+                </div>
+                <FormTextField name="amount" label="Amount" type="number" min="1" required />
+                <FormTextField name="reference" label="Reference" placeholder="Transfer ref, QRIS id, card approval..." />
+                <FormTextArea name="note" label="Note" placeholder="Finance note" />
+                <button className="gold-gradient min-h-11 w-full rounded-[22px] text-sm font-black text-[#041015]">
+                  Post Transaction
+                </button>
+              </form>
+            </GlassCard>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="mt-5 grid gap-5 xl:grid-cols-2">
         <GlassCard className="p-5">
@@ -307,5 +483,41 @@ function EmptyLine({ label }: { label: string }) {
     <div className="rounded-[22px] border border-dashed border-white/10 bg-white/[0.025] p-5 text-center text-sm font-semibold text-white/42">
       {label}
     </div>
+  );
+}
+
+function fieldClass() {
+  return "mt-2 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-semibold text-white outline-none transition placeholder:text-white/34 focus:border-[#29f1ff]/50";
+}
+
+function FormTextField(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) {
+  const { label, ...inputProps } = props;
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
+      <input className={fieldClass()} {...inputProps} />
+    </label>
+  );
+}
+
+function FormTextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; name: string }) {
+  const { label, ...textareaProps } = props;
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
+      <textarea className={`${fieldClass()} min-h-24 py-3`} {...textareaProps} />
+    </label>
+  );
+}
+
+function SelectField(props: React.SelectHTMLAttributes<HTMLSelectElement> & { label: string; name: string }) {
+  const { label, children, ...selectProps } = props;
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-normal text-white/52">{label}</span>
+      <select className={fieldClass()} {...selectProps}>
+        {children}
+      </select>
+    </label>
   );
 }

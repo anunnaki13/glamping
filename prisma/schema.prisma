@@ -53,6 +53,28 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CREDIT_CARD
+  DEBIT_CARD
+  QRIS
+  E_WALLET
+  OTA_COLLECT
+  OTHER
+}
+
+enum PaymentTransactionType {
+  PAYMENT
+  REFUND
+  ADJUSTMENT
+}
+
+enum PaymentTransactionStatus {
+  POSTED
+  VOIDED
+}
+
 enum HousekeepingStatus {
   DIRTY
   ASSIGNED
@@ -162,6 +184,7 @@ model Property {
   users             User[]
   messageTemplates  MessageTemplate[]
   communicationLogs CommunicationLog[]
+  paymentTransactions PaymentTransaction[]
   aiConfiguration   AiConfiguration?
   aiPromptTemplates AiPromptTemplate[]
 }
@@ -254,6 +277,7 @@ model Unit {
 model Reservation {
   id            String            @id @default(cuid())
   bookingCode   String            @unique
+  invoiceNumber String?           @unique
   guestId       String
   unitId        String?
   checkInDate   DateTime
@@ -266,7 +290,9 @@ model Reservation {
   roomRate      Decimal           @db.Decimal(14, 2)
   discount      Decimal           @default(0) @db.Decimal(14, 2)
   totalAmount   Decimal           @db.Decimal(14, 2)
+  amountPaid    Decimal           @default(0) @db.Decimal(14, 2)
   notes         String?
+  paymentNotes  String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
@@ -275,10 +301,12 @@ model Reservation {
   serviceRequests   ServiceRequest[]
   orders            Order[]
   communicationLogs CommunicationLog[]
+  paymentTransactions PaymentTransaction[]
 
   @@index([checkInDate, checkOutDate])
   @@index([status])
   @@index([paymentStatus])
+  @@index([invoiceNumber])
   @@index([guestId])
   @@index([unitId])
 }
@@ -364,6 +392,7 @@ model Order {
   reservation Reservation? @relation(fields: [reservationId], references: [id])
   guest       Guest?       @relation(fields: [guestId], references: [id])
   items       OrderItem[]
+  paymentTransactions PaymentTransaction[]
 
   @@index([status])
   @@index([paymentStatus])
@@ -385,6 +414,35 @@ model OrderItem {
 
   @@index([orderId])
   @@index([itemId])
+}
+
+model PaymentTransaction {
+  id            String                   @id @default(cuid())
+  code          String                   @unique
+  propertyId    String
+  reservationId String
+  orderId       String?
+  type          PaymentTransactionType   @default(PAYMENT)
+  method        PaymentMethod            @default(CASH)
+  status        PaymentTransactionStatus @default(POSTED)
+  amount        Decimal                  @db.Decimal(14, 2)
+  reference     String?
+  note          String?
+  recordedBy    String?
+  voidReason    String?
+  postedAt      DateTime                 @default(now())
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  property    Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  order       Order?      @relation(fields: [orderId], references: [id])
+
+  @@index([propertyId])
+  @@index([reservationId])
+  @@index([orderId])
+  @@index([status])
+  @@index([postedAt])
 }
 
 model ActivityLog {

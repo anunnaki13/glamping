@@ -15,6 +15,7 @@ import {
   HousekeepingStatus,
   MessageTemplateCategory,
   OrderStatus,
+  PaymentMethod,
   PaymentStatus,
   ReservationStatus,
 } from "@/generated/prisma/enums";
@@ -31,6 +32,7 @@ import {
   orderStatusTone,
   paymentStatusLabels,
   paymentStatusTone,
+  paymentMethodLabels,
   priorityLabels,
   requestTypeLabels,
   reservationStatusLabels,
@@ -40,6 +42,7 @@ import {
   unitStatusTone,
 } from "@/lib/labels";
 import { buildWhatsappUrl, renderMessageTemplate } from "@/lib/message-templates";
+import { calculateBalanceDue, getOrderPaidAmount, getReservationPaidAmount } from "@/lib/payments";
 import { getPrisma } from "@/lib/prisma";
 import { countNights } from "@/lib/reservations";
 
@@ -55,6 +58,17 @@ const paymentStatusOrder = [
   PaymentStatus.PARTIAL,
   PaymentStatus.PAID,
   PaymentStatus.REFUNDED,
+];
+
+const paymentMethodOrder = [
+  PaymentMethod.CASH,
+  PaymentMethod.BANK_TRANSFER,
+  PaymentMethod.CREDIT_CARD,
+  PaymentMethod.DEBIT_CARD,
+  PaymentMethod.QRIS,
+  PaymentMethod.E_WALLET,
+  PaymentMethod.OTA_COLLECT,
+  PaymentMethod.OTHER,
 ];
 
 const openHousekeepingStatuses = [
@@ -118,10 +132,17 @@ export default async function CheckoutWizardPage({ params, searchParams }: Check
     : null;
   const nights = countNights(reservation.checkInDate, reservation.checkOutDate);
   const roomTotal = Number(reservation.totalAmount);
-  const orderTotal = reservation.orders
-    .filter((order) => order.status !== OrderStatus.CANCELLED)
-    .reduce((sum, order) => sum + Number(order.total), 0);
+  const activeOrders = reservation.orders.filter((order) => order.status !== OrderStatus.CANCELLED);
+  const orderTotal = activeOrders.reduce((sum, order) => sum + Number(order.total), 0);
+  const paidOrderTotal = activeOrders.reduce((sum, order) => sum + getOrderPaidAmount(order), 0);
+  const reservationPaid = getReservationPaidAmount({
+    amountPaid: reservation.amountPaid,
+    paymentStatus: reservation.paymentStatus,
+    totalAmount: reservation.totalAmount,
+  });
   const grandTotal = roomTotal + orderTotal;
+  const paidTotal = reservationPaid + paidOrderTotal;
+  const balanceDue = calculateBalanceDue(grandTotal, paidTotal);
   const openRequests = reservation.serviceRequests.filter(
     (request) => request.status !== "COMPLETED" && request.status !== "CANCELLED",
   );
@@ -129,6 +150,7 @@ export default async function CheckoutWizardPage({ params, searchParams }: Check
   const justCompleted = done === "1" && reservation.status === ReservationStatus.CHECKED_OUT;
   const isComplete = reservation.status === ReservationStatus.CHECKED_OUT;
   const checkoutAction = completeCheckoutWizardAction.bind(null, reservation.id);
+  const amountPaidDefault = reservation.paymentStatus === PaymentStatus.PAID ? roomTotal : reservationPaid;
   const reviewMessage = renderMessageTemplate(
     reviewTemplate?.body ??
       "Halo {{guest_name}}, terima kasih sudah memilih {{property_name}}. Jika pengalaman Anda menyenangkan, kami sangat menghargai review singkat Anda.",
@@ -277,24 +299,57 @@ export default async function CheckoutWizardPage({ params, searchParams }: Check
                   <MoneyRow label="Room total" value={roomTotal} />
                   <MoneyRow label="Extra charges" value={orderTotal} />
                   <MoneyRow label="Grand total" value={grandTotal} strong />
+                  <MoneyRow label="Collected" value={paidTotal} />
+                  <MoneyRow label="Balance due" value={balanceDue} strong />
                 </div>
-                <label className="rounded-[22px] surface-inset p-4">
-                  <span className="text-xs font-bold uppercase tracking-normal text-white/42">Final payment status</span>
-                  <select
-                    name="paymentStatus"
-                    defaultValue={reservation.paymentStatus}
-                    className="mt-3 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none"
-                  >
-                    {paymentStatusOrder.map((status) => (
-                      <option key={status} value={status}>
-                        {paymentStatusLabels[status]}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-3 text-xs font-semibold leading-5 text-white/50">
-                    Status ini akan disimpan ke reservasi setelah tombol final check-out ditekan.
-                  </p>
-                </label>
+                <div className="space-y-3">
+                  <label className="block rounded-[22px] surface-inset p-4">
+                    <span className="text-xs font-bold uppercase tracking-normal text-white/42">Final payment status</span>
+                    <select
+                      name="paymentStatus"
+                      defaultValue={reservation.paymentStatus}
+                      className="mt-3 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none"
+                    >
+                      {paymentStatusOrder.map((status) => (
+                        <option key={status} value={status}>
+                          {paymentStatusLabels[status]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block rounded-[22px] surface-inset p-4">
+                    <span className="text-xs font-bold uppercase tracking-normal text-white/42">Amount paid for room</span>
+                    <input
+                      name="amountPaid"
+                      type="number"
+                      min="0"
+                      defaultValue={amountPaidDefault}
+                      className="mt-3 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none"
+                    />
+                  </label>
+                  <label className="block rounded-[22px] surface-inset p-4">
+                    <span className="text-xs font-bold uppercase tracking-normal text-white/42">Payment method</span>
+                    <select
+                      name="paymentMethod"
+                      defaultValue={PaymentMethod.BANK_TRANSFER}
+                      className="mt-3 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none"
+                    >
+                      {paymentMethodOrder.map((method) => (
+                        <option key={method} value={method}>
+                          {paymentMethodLabels[method]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block rounded-[22px] surface-inset p-4">
+                    <span className="text-xs font-bold uppercase tracking-normal text-white/42">Payment reference</span>
+                    <input
+                      name="paymentReference"
+                      placeholder="Transfer ref, QRIS id, card approval..."
+                      className="mt-3 min-h-12 w-full rounded-[22px] surface-field px-4 text-sm font-bold text-white outline-none placeholder:text-white/34"
+                    />
+                  </label>
+                </div>
               </div>
             </GlassCard>
 
@@ -329,6 +384,7 @@ export default async function CheckoutWizardPage({ params, searchParams }: Check
                 <InfoRow label="Booking" value={reservation.bookingCode} />
                 <InfoRow label="Guest" value={reservation.guest.fullName} />
                 <InfoRow label="Grand total" value={formatIdr(grandTotal)} strong />
+                <InfoRow label="Balance due" value={formatIdr(balanceDue)} strong />
                 <InfoRow label="Open requests" value={String(openRequests.length)} />
               </div>
               <button className="gold-gradient mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[22px] px-5 text-sm font-black text-[#041015]">

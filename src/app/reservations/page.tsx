@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarCheck, CreditCard, MessageCircle, Plus, Search } from "lucide-react";
 import {
   BookingSource,
+  OrderStatus,
   PaymentStatus,
   ReservationStatus,
   UserRole,
@@ -31,6 +32,7 @@ import {
   canViewStayFinancialData,
   hasPermission,
 } from "@/lib/permissions";
+import { calculateBalanceDue, getOrderPaidAmount, getReservationPaidAmount } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -85,15 +87,33 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
     take: 80,
   });
 
+  const getFolioSnapshot = (reservation: (typeof reservations)[number]) => {
+    const activeOrders = reservation.orders.filter((order) => order.status !== OrderStatus.CANCELLED);
+    const orderTotal = activeOrders.reduce((sum, order) => sum + Number(order.total), 0);
+    const paidTotal =
+      getReservationPaidAmount({
+        amountPaid: reservation.amountPaid,
+        paymentStatus: reservation.paymentStatus,
+        totalAmount: reservation.totalAmount,
+      }) + activeOrders.reduce((sum, order) => sum + getOrderPaidAmount(order), 0);
+    const folioTotal = Number(reservation.totalAmount) + orderTotal;
+
+    return {
+      balanceDue: calculateBalanceDue(folioTotal, paidTotal),
+      folioTotal,
+    };
+  };
+
   const summary = {
     total: reservations.length,
     inHouse: reservations.filter((reservation) => reservation.status === ReservationStatus.CHECKED_IN).length,
-    pendingPayment: reservations.filter((reservation) => reservation.paymentStatus !== PaymentStatus.PAID).length,
-    revenue: reservations.reduce((sum, reservation) => sum + Number(reservation.totalAmount), 0),
+    revenue: reservations.reduce((sum, reservation) => sum + getFolioSnapshot(reservation).folioTotal, 0),
+    outstanding: reservations.reduce((sum, reservation) => sum + getFolioSnapshot(reservation).balanceDue, 0),
     upcoming: reservations.filter((reservation) => reservation.status === ReservationStatus.PENDING || reservation.status === ReservationStatus.CONFIRMED).length,
     openRequests: reservations.reduce((sum, reservation) => sum + reservation.serviceRequests.length, 0),
   };
   const featuredReservation = reservations[0];
+  const featuredFolio = featuredReservation ? getFolioSnapshot(featuredReservation) : null;
 
   return (
     <AppShell>
@@ -125,8 +145,8 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
         <MetricCard title="In-house Guests" value={String(summary.inHouse)} icon={<MessageCircle className="size-5" />} />
         {canViewFinancials ? (
           <>
-            <MetricCard title="Pending Payment" value={String(summary.pendingPayment)} icon={<CreditCard className="size-5" />} />
             <MetricCard title="Revenue Envelope" value={formatIdr(summary.revenue)} icon={<CreditCard className="size-5" />} />
+            <MetricCard title="Outstanding" value={formatIdr(summary.outstanding)} icon={<CreditCard className="size-5" />} />
           </>
         ) : (
           <>
@@ -177,6 +197,7 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
                 </thead>
                 <tbody>
                   {reservations.map((reservation) => {
+                    const folio = getFolioSnapshot(reservation);
                     const cancelAction = cancelReservationAction.bind(null, reservation.id);
                     const canCheckIn =
                       canManageCheckIn &&
@@ -219,7 +240,12 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
                           </td>
                         ) : null}
                         <td className="px-4 py-4">{bookingSourceLabels[reservation.source]}</td>
-                        {canViewFinancials ? <td className="px-4 py-4 font-black text-white">{formatIdr(Number(reservation.totalAmount))}</td> : null}
+                        {canViewFinancials ? (
+                          <td className="px-4 py-4">
+                            <p className="font-black text-white">{formatIdr(folio.folioTotal)}</p>
+                            <p className="mt-1 text-xs font-semibold text-white/48">Due {formatIdr(folio.balanceDue)}</p>
+                          </td>
+                        ) : null}
                         <td className="rounded-r-[20px] px-4 py-4">
                           <div className="flex flex-wrap gap-2">
                             <Link
@@ -311,8 +337,8 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
                   <MiniProfileStat label="Source" value={bookingSourceLabels[featuredReservation.source]} />
                   <MiniProfileStat label="Check-in" value={formatDateId(featuredReservation.checkInDate)} />
                   <MiniProfileStat
-                    label={canViewFinancials ? "Spend" : "Requests"}
-                    value={canViewFinancials ? formatIdr(Number(featuredReservation.totalAmount)) : String(featuredReservation.serviceRequests.length)}
+                    label={canViewFinancials ? "Balance" : "Requests"}
+                    value={canViewFinancials && featuredFolio ? formatIdr(featuredFolio.balanceDue) : String(featuredReservation.serviceRequests.length)}
                   />
                 </div>
               </>
