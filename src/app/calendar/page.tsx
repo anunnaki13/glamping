@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { addDays, subDays } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { ReservationStatus, UserRole } from "@/generated/prisma/enums";
+import { CalendarDays, ChevronLeft, ChevronRight, Lock, MoveRight, Plus, UnlockKeyhole } from "lucide-react";
+import { ReservationStatus, UnitBlockType, UserRole } from "@/generated/prisma/enums";
+import {
+  createUnitBlockFromCalendarAction,
+  releaseUnitBlockFromCalendarAction,
+  rescheduleReservationFromCalendarAction,
+} from "@/app/calendar/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionFeedbackBanner } from "@/components/ui/action-feedback-banner";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -10,6 +15,8 @@ import { getActionFeedback, type ActionFeedback, type ActionFeedbackSearchParams
 import { formatDateId, formatIdr } from "@/lib/formatters";
 import {
   reservationStatusLabels,
+  unitBlockTypeLabels,
+  unitBlockTypeTone,
   unitStatusLabels,
   unitStatusTone,
 } from "@/lib/labels";
@@ -39,8 +46,29 @@ type CalendarReservation = {
   };
 };
 
+type CalendarUnitBlock = {
+  id: string;
+  startDate: Date;
+  endDate: Date;
+  type: UnitBlockType;
+  reason: string;
+  notes: string | null;
+  createdBy: string | null;
+};
+
+type CalendarUnitOption = {
+  id: string;
+  code: string;
+};
+
 const visibleDays = 14;
 const gridTemplateColumns = "176px repeat(14, minmax(116px, 1fr))";
+const calendarBlockTypeOptions = [
+  UnitBlockType.MAINTENANCE,
+  UnitBlockType.PRIVATE_HOLD,
+  UnitBlockType.OUT_OF_SERVICE,
+  UnitBlockType.OWNER_STAY,
+] as const;
 
 const reservationCellTone: Record<ReservationStatus, string> = {
   PENDING: "border-amber-300/22 bg-amber-400/13 text-amber-50",
@@ -55,6 +83,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const session = await requirePagePermission("reservation:read");
   const role = session.role as UserRole;
   const canWrite = hasPermission(role, "reservation:write");
+  const canBlock = hasPermission(role, "unit:write");
   const canViewFinancials = canViewStayFinancialData(role);
   const params = await searchParams;
   const feedback = getActionFeedback(params) ?? getCalendarStartFeedback(params.start);
@@ -77,11 +106,19 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         include: { guest: true },
         orderBy: { checkInDate: "asc" },
       },
+      unitBlocks: {
+        where: {
+          startDate: { lt: rangeEnd },
+          endDate: { gt: rangeStart },
+        },
+        orderBy: { startDate: "asc" },
+      },
     },
     orderBy: { code: "asc" },
   });
 
   const reservations = units.flatMap((unit) => unit.reservations);
+  const unitOptions = units.map((unit) => ({ id: unit.id, code: unit.code }));
   const occupiedCells = units.reduce(
     (sum, unit) =>
       sum +
@@ -92,6 +129,17 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       ).length,
     0,
   );
+  const blockedCells = units.reduce(
+    (sum, unit) =>
+      sum +
+      days.filter((day) =>
+        unit.unitBlocks.some((block) =>
+          coversBlockDate(block, formatDateInput(day)),
+        ),
+      ).length,
+    0,
+  );
+  const calendarBlocks = units.flatMap((unit) => unit.unitBlocks);
   const arrivals = reservations.filter((reservation) =>
     dayKeys.has(formatDateInput(reservation.checkInDate)),
   ).length;
@@ -102,7 +150,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     (sum, reservation) => sum + Number(reservation.totalAmount),
     0,
   );
-  const availableCells = Math.max(0, units.length * days.length - occupiedCells);
+  const availableCells = Math.max(0, units.length * days.length - occupiedCells - blockedCells);
 
   return (
     <AppShell>
@@ -153,7 +201,10 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         <MetricCard title="Active Bookings" value={String(reservations.length)} />
         <MetricCard title="Arrivals" value={String(arrivals)} />
         <MetricCard title="Departures" value={String(departures)} />
-        <MetricCard title={canViewFinancials ? "Board Revenue" : "Open Room-Nights"} value={canViewFinancials ? formatIdr(revenueOnBoard) : String(availableCells)} />
+        <MetricCard
+          title={canViewFinancials ? "Board Revenue" : "Open Room-Nights"}
+          value={canViewFinancials ? formatIdr(revenueOnBoard) : String(availableCells)}
+        />
       </section>
 
       <GlassCard variant="strong" className="mt-6 overflow-hidden p-0">
@@ -168,7 +219,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
                   {formatDateId(rangeStart)} - {formatDateId(addDays(rangeEnd, -1))}
                 </h3>
                 <p className="mt-1 text-xs font-semibold text-white/52">
-                  {units.length} units · {availableCells} open room-nights
+                  {units.length} units · {availableCells} open room-nights · {blockedCells} blocked
                 </p>
               </div>
             </div>
@@ -182,6 +233,9 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
                 dot
               />
             ))}
+            {calendarBlocks.length > 0 ? (
+              <StatusBadge label={`${calendarBlocks.length} blocks`} tone="warning" dot />
+            ) : null}
           </div>
         </div>
 
@@ -247,13 +301,21 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
                   const departure = unit.reservations.find(
                     (item) => formatDateInput(item.checkOutDate) === dateKey,
                   );
+                  const block = unit.unitBlocks.find((item) => coversBlockDate(item, dateKey));
 
                   return (
                     <CalendarCell
                       key={`${unit.id}-${dateKey}`}
                       dateKey={dateKey}
+                      unitId={unit.id}
+                      unitCode={unit.code}
+                      calendarStartKey={formatDateInput(rangeStart)}
                       reservation={reservation}
                       departure={departure}
+                      block={block}
+                      units={unitOptions}
+                      canWrite={canWrite}
+                      canBlock={canBlock}
                     />
                   );
                 })}
@@ -268,47 +330,108 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
 function CalendarCell({
   dateKey,
+  unitId,
+  unitCode,
+  calendarStartKey,
   reservation,
   departure,
+  block,
+  units,
+  canWrite,
+  canBlock,
 }: {
   dateKey: string;
+  unitId: string;
+  unitCode: string;
+  calendarStartKey: string;
   reservation?: CalendarReservation;
   departure?: CalendarReservation;
+  block?: CalendarUnitBlock;
+  units: CalendarUnitOption[];
+  canWrite: boolean;
+  canBlock: boolean;
 }) {
   const todayKey = formatDateInput(new Date());
+  const nextDateKey = addDateInputDays(dateKey, 1);
+  const cellTestId = `calendar-cell-${unitCode}-${dateKey}`;
 
   if (reservation) {
     const isArrival = formatDateInput(reservation.checkInDate) === dateKey;
+    const canMoveReservation = canWrite && (reservation.status === ReservationStatus.PENDING || reservation.status === ReservationStatus.CONFIRMED);
 
     return (
-      <div className={cn("min-h-[104px] border-r border-white/[0.075] p-2", dateKey === todayKey ? "bg-[#29f1ff]/8" : "bg-white/[0.012]")}>
-        <Link
-          href={`/reservations/${reservation.id}`}
+      <div data-testid={cellTestId} className={cn("min-h-[104px] border-r border-white/[0.075] p-2", dateKey === todayKey ? "bg-[#29f1ff]/8" : "bg-white/[0.012]")}>
+        <div
           className={cn(
-            "block min-h-[88px] rounded-[18px] border p-2.5 shadow-[0_14px_28px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-0.5 hover:border-[#b8fbff]/40",
+            "min-h-[88px] rounded-[18px] border p-2.5 shadow-[0_14px_28px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]",
             reservationCellTone[reservation.status],
           )}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="truncate font-mono text-[11px] font-black">{reservation.bookingCode}</span>
+          <div className="flex items-start justify-between gap-2">
+            <Link href={`/reservations/${reservation.id}`} className="min-w-0 transition hover:text-white">
+              <span className="block truncate font-mono text-[11px] font-black">{reservation.bookingCode}</span>
+              <p className="mt-2 truncate text-xs font-black">{reservation.guest.fullName}</p>
+              <p className="mt-1 truncate text-[11px] font-semibold opacity-72">
+                {reservationStatusLabels[reservation.status]}
+              </p>
+            </Link>
             {isArrival ? (
-              <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-black">
+              <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-black">
                 IN
               </span>
             ) : null}
           </div>
-          <p className="mt-2 truncate text-xs font-black">{reservation.guest.fullName}</p>
-          <p className="mt-1 truncate text-[11px] font-semibold opacity-72">
-            {reservationStatusLabels[reservation.status]}
-          </p>
-        </Link>
+          {canMoveReservation ? (
+            <details className="mt-2">
+              <summary className="flex cursor-pointer list-none items-center gap-1 rounded-[14px] border border-white/12 bg-black/16 px-2 py-1 text-[10px] font-black uppercase tracking-normal text-white/76">
+                <MoveRight className="size-3" />
+                Move
+              </summary>
+              <form action={rescheduleReservationFromCalendarAction} className="mt-2 space-y-2">
+                <input type="hidden" name="reservationId" value={reservation.id} />
+                <input type="hidden" name="calendarStart" value={calendarStartKey} />
+                <select
+                  name="unitId"
+                  defaultValue={unitId}
+                  aria-label={`Move ${reservation.bookingCode} unit`}
+                  className="h-8 w-full rounded-[14px] border border-white/10 bg-black/24 px-2 text-[11px] font-bold text-white outline-none"
+                >
+                  {units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.code}
+                    </option>
+                  ))}
+                </select>
+                <div className="grid grid-cols-2 gap-1">
+                  <input
+                    type="date"
+                    name="checkInDate"
+                    defaultValue={formatDateInput(reservation.checkInDate)}
+                    aria-label={`Move ${reservation.bookingCode} check-in`}
+                    className="h-8 min-w-0 rounded-[14px] border border-white/10 bg-black/24 px-1.5 text-[10px] font-bold text-white outline-none"
+                  />
+                  <input
+                    type="date"
+                    name="checkOutDate"
+                    defaultValue={formatDateInput(reservation.checkOutDate)}
+                    aria-label={`Move ${reservation.bookingCode} check-out`}
+                    className="h-8 min-w-0 rounded-[14px] border border-white/10 bg-black/24 px-1.5 text-[10px] font-bold text-white outline-none"
+                  />
+                </div>
+                <button className="h-8 w-full rounded-[14px] bg-white/16 text-[10px] font-black uppercase tracking-normal text-white">
+                  Save Move
+                </button>
+              </form>
+            </details>
+          ) : null}
+        </div>
       </div>
     );
   }
 
   if (departure) {
     return (
-      <div className={cn("min-h-[104px] border-r border-white/[0.075] p-2", dateKey === todayKey ? "bg-[#29f1ff]/8" : "bg-white/[0.012]")}>
+      <div data-testid={cellTestId} className={cn("min-h-[104px] border-r border-white/[0.075] p-2", dateKey === todayKey ? "bg-[#29f1ff]/8" : "bg-white/[0.012]")}>
         <Link
           href={`/reservations/${departure.id}`}
           className="surface-inset block min-h-[88px] rounded-[18px] p-2.5 text-white/58 transition hover:border-[#29f1ff]/32"
@@ -326,9 +449,99 @@ function CalendarCell({
     );
   }
 
+  if (block) {
+    return (
+      <div data-testid={cellTestId} className={cn("min-h-[104px] border-r border-white/[0.075] p-2", dateKey === todayKey ? "bg-[#29f1ff]/8" : "bg-white/[0.012]")}>
+        <div className="min-h-[88px] rounded-[18px] border border-amber-300/24 bg-amber-400/12 p-2.5 text-amber-50 shadow-[0_14px_28px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <Lock className="size-3 shrink-0" />
+                <p className="truncate text-[11px] font-black">{unitBlockTypeLabels[block.type]}</p>
+              </div>
+              <p className="mt-2 truncate text-xs font-black">{block.reason}</p>
+              <p className="mt-1 truncate text-[11px] font-semibold opacity-72">{block.createdBy ?? "Calendar block"}</p>
+            </div>
+            <StatusBadge label="Block" tone={unitBlockTypeTone[block.type]} className="shrink-0" />
+          </div>
+          {canBlock ? (
+            <form action={releaseUnitBlockFromCalendarAction} className="mt-2">
+              <input type="hidden" name="blockId" value={block.id} />
+              <input type="hidden" name="calendarStart" value={calendarStartKey} />
+              <button className="inline-flex h-8 w-full items-center justify-center gap-1 rounded-[14px] border border-white/12 bg-black/16 text-[10px] font-black uppercase tracking-normal text-white/82">
+                <UnlockKeyhole className="size-3" />
+                Release
+              </button>
+            </form>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("min-h-[104px] border-r border-white/[0.075] p-2", dateKey === todayKey ? "bg-[#29f1ff]/8" : "bg-white/[0.012]")}>
-      <div className="min-h-[88px] rounded-[18px] border border-white/[0.04] bg-white/[0.012]" />
+    <div data-testid={cellTestId} className={cn("min-h-[104px] border-r border-white/[0.075] p-2", dateKey === todayKey ? "bg-[#29f1ff]/8" : "bg-white/[0.012]")}>
+      <div className="min-h-[88px] rounded-[18px] border border-white/[0.04] bg-white/[0.012] p-2">
+        <div className="flex flex-wrap gap-1">
+          {canWrite ? (
+            <Link
+              href={`/reservations/new?checkIn=${dateKey}&checkOut=${nextDateKey}&unitId=${unitId}`}
+              className="inline-flex h-7 items-center justify-center rounded-[13px] border border-[#29f1ff]/20 bg-[#29f1ff]/8 px-2 text-[10px] font-black uppercase tracking-normal text-[#b8fbff]"
+            >
+              Book
+            </Link>
+          ) : null}
+          {canBlock ? (
+            <details className="min-w-0">
+              <summary className="inline-flex h-7 cursor-pointer list-none items-center gap-1 rounded-[13px] border border-amber-300/20 bg-amber-400/10 px-2 text-[10px] font-black uppercase tracking-normal text-amber-100">
+                <Lock className="size-3" />
+                Block
+              </summary>
+              <form action={createUnitBlockFromCalendarAction} className="mt-2 w-full space-y-1.5 rounded-[18px] border border-white/10 bg-[#07101d] p-2 shadow-2xl">
+                <input type="hidden" name="unitId" value={unitId} />
+                <input type="hidden" name="calendarStart" value={calendarStartKey} />
+                <input type="hidden" name="startDate" value={dateKey} />
+                <div className="grid gap-1">
+                  <select
+                    name="type"
+                    defaultValue={UnitBlockType.MAINTENANCE}
+                    aria-label={`Block type ${dateKey}`}
+                    className="h-7 min-w-0 rounded-[14px] border border-white/10 bg-black/24 px-1.5 text-[10px] font-bold text-white outline-none"
+                  >
+                    {calendarBlockTypeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {unitBlockTypeLabels[type]}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="date"
+                    name="endDate"
+                    defaultValue={nextDateKey}
+                    aria-label={`Block end ${dateKey}`}
+                    className="h-7 min-w-0 rounded-[14px] border border-white/10 bg-black/24 px-1.5 text-[10px] font-bold text-white outline-none"
+                  />
+                </div>
+                <input
+                  name="reason"
+                  placeholder="Reason"
+                  aria-label={`Block reason ${dateKey}`}
+                  className="h-7 w-full rounded-[14px] border border-white/10 bg-black/24 px-2 text-[11px] font-bold text-white outline-none placeholder:text-white/32"
+                />
+                <input
+                  name="notes"
+                  placeholder="Notes"
+                  aria-label={`Block notes ${dateKey}`}
+                  className="h-7 w-full rounded-[14px] border border-white/10 bg-black/24 px-2 text-[11px] font-bold text-white outline-none placeholder:text-white/32"
+                />
+                <button className="h-7 w-full rounded-[14px] bg-amber-300/18 text-[10px] font-black uppercase tracking-normal text-amber-50">
+                  Save Block
+                </button>
+              </form>
+            </details>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -349,14 +562,26 @@ function coversDate(reservation: CalendarReservation, dateKey: string) {
   return checkInKey <= dateKey && checkOutKey > dateKey;
 }
 
+function coversBlockDate(block: CalendarUnitBlock, dateKey: string) {
+  const startKey = formatDateInput(block.startDate);
+  const endKey = formatDateInput(block.endDate);
+
+  return startKey <= dateKey && endKey > dateKey;
+}
+
+function addDateInputDays(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return formatDateInput(new Date(year, month - 1, day + days));
+}
+
 function parseCalendarStart(value?: string) {
   const todayKey = formatDateInput(new Date());
 
   if (!isCalendarStartInput(value)) {
-    return new Date(`${todayKey}T00:00:00+08:00`);
+    return parseDateInput(todayKey);
   }
 
-  return new Date(`${value}T00:00:00+08:00`);
+  return parseDateInput(value);
 }
 
 function getCalendarStartFeedback(value?: string): ActionFeedback | null {
@@ -375,8 +600,13 @@ function isCalendarStartInput(value?: string): value is string {
     return false;
   }
 
-  const parsed = new Date(`${value}T00:00:00+08:00`);
+  const parsed = parseDateInput(value);
   return !Number.isNaN(parsed.getTime()) && formatDateInput(parsed) === value;
+}
+
+function parseDateInput(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function formatWeekday(date: Date) {

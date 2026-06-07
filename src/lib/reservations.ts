@@ -34,12 +34,14 @@ export async function assertUnitAvailable({
   checkInDate,
   checkOutDate,
   currentReservationId,
+  currentBlockId,
   propertyId,
 }: {
   unitId: string;
   checkInDate: Date;
   checkOutDate: Date;
   currentReservationId?: string;
+  currentBlockId?: string;
   propertyId: string;
 }) {
   const prisma = getPrisma();
@@ -74,6 +76,25 @@ export async function assertUnitAvailable({
     throw new Error(`Unit overlap dengan booking ${overlap.bookingCode}.`);
   }
 
+  const block = await prisma.unitBlock.findFirst({
+    where: {
+      unitId,
+      id: currentBlockId ? { not: currentBlockId } : undefined,
+      startDate: { lt: checkOutDate },
+      endDate: { gt: checkInDate },
+    },
+    select: {
+      reason: true,
+      startDate: true,
+      endDate: true,
+      type: true,
+    },
+  });
+
+  if (block) {
+    throw new Error(`Unit diblokir untuk ${block.reason}.`);
+  }
+
   return unit;
 }
 
@@ -82,11 +103,13 @@ export async function getAvailableUnitIds({
   checkInDate,
   checkOutDate,
   currentReservationId,
+  currentBlockId,
 }: {
   propertyId: string;
   checkInDate: Date;
   checkOutDate: Date;
   currentReservationId?: string;
+  currentBlockId?: string;
 }) {
   const prisma = getPrisma();
   const blockedReservations = await prisma.reservation.findMany({
@@ -101,6 +124,20 @@ export async function getAvailableUnitIds({
   });
 
   const blockedUnitIds = new Set(blockedReservations.map((reservation) => reservation.unitId).filter(Boolean));
+  const blockedCalendarUnits = await prisma.unitBlock.findMany({
+    where: {
+      id: currentBlockId ? { not: currentBlockId } : undefined,
+      unit: { propertyId },
+      startDate: { lt: checkOutDate },
+      endDate: { gt: checkInDate },
+    },
+    select: { unitId: true },
+  });
+
+  for (const block of blockedCalendarUnits) {
+    blockedUnitIds.add(block.unitId);
+  }
+
   const units = await prisma.unit.findMany({
     where: {
       propertyId,

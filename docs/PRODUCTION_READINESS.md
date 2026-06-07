@@ -104,4 +104,4 @@ The endpoint returns `200` only when the app can reach the database.
 - WhatsApp is quick-link based, not API sending.
 - AI is preparation/configuration only unless explicitly wired to generation flows.
 - Payment gateway, invoice PDF, refunds, and inventory stock are not complete V1 features.
-- Calendar does not yet support drag/drop reschedule or maintenance block creation from cells.
+- Calendar supports controlled reschedule and unit block workflows, but does not yet offer drag/drop interactions.

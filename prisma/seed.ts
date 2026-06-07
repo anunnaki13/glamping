@@ -16,6 +16,7 @@ import {
   RequestStatus,
   RequestType,
   ReservationStatus,
+  UnitBlockType,
   UnitStatus,
   UserRole,
 } from "../src/generated/prisma/client";
@@ -322,6 +323,18 @@ async function main() {
     ],
   });
 
+  await prisma.unitBlock.create({
+    data: {
+      unitId: unitByCode.get("FD-02")!.id,
+      startDate: startOfDay(today),
+      endDate: startOfDay(addDays(today, 2)),
+      type: UnitBlockType.MAINTENANCE,
+      reason: "AC inspection window",
+      notes: "Seeded calendar block for maintenance planning.",
+      createdBy: "Seeder",
+    },
+  });
+
   const ariaReservation = reservations.find((reservation) => reservation.guest.fullName === "Aria Wibowo");
   const dewikReservation = reservations.find((reservation) => reservation.guest.fullName === "Dewi Kartika");
   const mayaGuest = guestByName.get("Maya Sari");
@@ -396,6 +409,7 @@ async function clearDatabase() {
   await prisma.serviceRequest.deleteMany();
   await prisma.housekeepingTask.deleteMany();
   await prisma.reservation.deleteMany();
+  await prisma.unitBlock.deleteMany();
   await prisma.guest.deleteMany();
   await prisma.unit.deleteMany();
   await prisma.unitType.deleteMany();

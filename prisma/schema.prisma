@@ -26,6 +26,13 @@ enum UnitStatus {
   OUT_OF_ORDER
 }
 
+enum UnitBlockType {
+  MAINTENANCE
+  PRIVATE_HOLD
+  OUT_OF_SERVICE
+  OWNER_STAY
+}
+
 enum ReservationStatus {
   PENDING
   CONFIRMED
@@ -268,10 +275,30 @@ model Unit {
   unitType          UnitType           @relation(fields: [unitTypeId], references: [id])
   reservations      Reservation[]
   housekeepingTasks HousekeepingTask[]
+  unitBlocks        UnitBlock[]
 
   @@index([propertyId])
   @@index([unitTypeId])
   @@index([status])
+}
+
+model UnitBlock {
+  id        String        @id @default(cuid())
+  unitId    String
+  startDate DateTime
+  endDate   DateTime
+  type      UnitBlockType @default(MAINTENANCE)
+  reason    String
+  notes     String?
+  createdBy String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId])
+  @@index([startDate, endDate])
+  @@index([type])
 }
 
 model Reservation {

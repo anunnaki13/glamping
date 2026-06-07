@@ -34,7 +34,7 @@ const creatableReservationStatuses = [
 ] as const;
 
 type NewReservationPageProps = {
-  searchParams: Promise<{ checkIn?: string; checkOut?: string } & ActionFeedbackSearchParams>;
+  searchParams: Promise<{ checkIn?: string; checkOut?: string; unitId?: string } & ActionFeedbackSearchParams>;
 };
 
 export default async function NewReservationPage({ searchParams }: NewReservationPageProps) {
@@ -57,7 +57,11 @@ export default async function NewReservationPage({ searchParams }: NewReservatio
     getAvailableUnitIds({ propertyId: session.propertyId, checkInDate, checkOutDate }),
   ]);
 
+  const requestedUnit = params.unitId
+    ? units.find((unit) => unit.id === params.unitId && availableUnitIds.has(unit.id))
+    : undefined;
   const firstAvailableUnit =
+    requestedUnit ??
     units.find((unit) => availableUnitIds.has(unit.id) && (unit.status === UnitStatus.READY || unit.status === UnitStatus.AVAILABLE)) ??
     units.find((unit) => availableUnitIds.has(unit.id)) ??
     units[0];

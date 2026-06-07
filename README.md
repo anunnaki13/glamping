@@ -13,7 +13,8 @@ Nusa Escape Smart Glamping OS is a design-driven MVP for premium glamping operat
 - Owner dashboard with live database-backed demo data
 - Unit Type and Unit master data connected to PostgreSQL
 - Guest CRM list, create, detail, and edit flows connected to PostgreSQL
-- Reservation list, create, detail, edit, cancel, check-in wizard, check-out wizard, and occupancy calendar flows connected to PostgreSQL
+- Reservation list, create, detail, edit, cancel, check-in wizard, check-out wizard, and operational calendar flows connected to PostgreSQL
+- Calendar reschedule controls plus unit maintenance/private block creation and release flows
 - Housekeeping kanban, task creation, task transitions, and unit readiness sync connected to PostgreSQL
 - Service request queue plus POS catalog and order flows connected to PostgreSQL
 - Dashboard KPIs and charts backed by live database summaries

@@ -11,6 +11,7 @@ import type {
   RequestStatus,
   RequestType,
   ReservationStatus,
+  UnitBlockType,
   UnitStatus,
 } from "@/generated/prisma/enums";
 import type { StatusTone } from "@/components/ui/status-badge";
@@ -43,6 +44,20 @@ export const unitStatusTone: Record<UnitStatus, StatusTone> = {
   READY: "success",
   MAINTENANCE: "warning",
   OUT_OF_ORDER: "danger",
+};
+
+export const unitBlockTypeLabels: Record<UnitBlockType, string> = {
+  MAINTENANCE: "Maintenance",
+  PRIVATE_HOLD: "Private Hold",
+  OUT_OF_SERVICE: "Out of Service",
+  OWNER_STAY: "Owner Stay",
+};
+
+export const unitBlockTypeTone: Record<UnitBlockType, StatusTone> = {
+  MAINTENANCE: "warning",
+  PRIVATE_HOLD: "violet",
+  OUT_OF_SERVICE: "danger",
+  OWNER_STAY: "cyan",
 };
 
 export function humanizeGuestType(value: string) {

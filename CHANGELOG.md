@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.6 - Calendar Operations Upgrade
+
+- Added calendar unit blocks for maintenance, private holds, out-of-service windows, and owner stays.
+- Added server-side availability protection so reservations and reschedules cannot overlap active bookings or calendar blocks.
+- Added calendar actions for rescheduling confirmed reservations, creating unit blocks, and releasing blocks.
+- Added quick calendar controls for booking, moving reservations, blocking cells, and releasing blocks.
+- Added E2E coverage for manager block/release flow and front office calendar reschedule flow.
+
 ## 0.18.5 - Role Access QA
 
 - Added role-by-role E2E coverage for owner, front office, housekeeping, F&B/activity, and read-only viewer module access.

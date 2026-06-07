@@ -30,7 +30,13 @@ async function cleanupDatabase() {
   });
   const qaUnitIds = [...new Set(qaHousekeepingTasks.map((task) => task.unitId))];
   const qaReservations = await prisma.reservation.findMany({
-    where: { guest: { fullName: { startsWith: "QA Guest" } } },
+    where: {
+      OR: [
+        { bookingCode: { startsWith: "QA-CAL-" } },
+        { guest: { fullName: { startsWith: "QA Guest" } } },
+        { guest: { fullName: { startsWith: "QA Calendar" } } },
+      ],
+    },
     select: { id: true },
   });
   const qaReservationIds = qaReservations.map((reservation) => reservation.id);
@@ -83,6 +89,14 @@ async function cleanupDatabase() {
     },
   });
   await prisma.reservation.deleteMany({ where: { id: { in: qaReservationIds } } });
+  await prisma.unitBlock.deleteMany({
+    where: {
+      OR: [
+        { reason: { contains: "QA Calendar" } },
+        { unit: { code: { startsWith: "QA-CAL-" } } },
+      ],
+    },
+  });
   await prisma.guest.deleteMany({ where: { fullName: { startsWith: "QA Guest" } } });
   await prisma.housekeepingTask.deleteMany({ where: { id: { in: qaHousekeepingTasks.map((task) => task.id) } } });
   await prisma.messageTemplate.deleteMany({ where: { name: { startsWith: "QA Welcome" } } });
@@ -94,6 +108,8 @@ async function cleanupDatabase() {
         { description: { contains: "QA Sunrise Picnic" } },
         { description: { contains: "QA Adventure" } },
         { description: { contains: "QA-LF-" } },
+        { description: { contains: "QA-CAL-" } },
+        { description: { contains: "QA Calendar" } },
         { description: { contains: "QA Welcome" } },
       ],
     },
@@ -121,7 +137,11 @@ async function cleanupDatabase() {
     },
   });
   await prisma.housekeepingTask.deleteMany({ where: { unit: { code: { startsWith: "QA-LF-" } } } });
+  await prisma.housekeepingTask.deleteMany({ where: { unit: { code: { startsWith: "QA-CAL-" } } } });
+  await prisma.guest.deleteMany({ where: { fullName: { startsWith: "QA Calendar" } } });
   await prisma.unit.deleteMany({ where: { code: { startsWith: "QA-LF-" } } });
+  await prisma.unit.deleteMany({ where: { code: { startsWith: "QA-CAL-" } } });
+  await prisma.unitType.deleteMany({ where: { name: "QA Calendar Suite", units: { none: {} } } });
   await prisma.$disconnect();
 }
 
