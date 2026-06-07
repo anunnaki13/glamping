@@ -19,7 +19,13 @@ async function cleanupDatabase() {
 
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   const qaHousekeepingTasks = await prisma.housekeepingTask.findMany({
-    where: { taskType: { startsWith: "QA Linen Refresh" } },
+    where: {
+      OR: [
+        { taskType: { startsWith: "QA Linen Refresh" } },
+        { notes: { contains: "QA Guest" } },
+        { unit: { code: { startsWith: "QA-LF-" } } },
+      ],
+    },
     select: { id: true, unitId: true },
   });
   const qaUnitIds = [...new Set(qaHousekeepingTasks.map((task) => task.unitId))];
@@ -41,12 +47,17 @@ async function cleanupDatabase() {
   await prisma.paymentTransaction.deleteMany({ where: { reservationId: { in: qaReservationIds } } });
   await prisma.orderItem.deleteMany({
     where: {
-      order: {
-        OR: [
-          { reservationId: { in: qaReservationIds } },
-          { guest: { fullName: { startsWith: "QA Guest" } } },
-        ],
-      },
+      OR: [
+        {
+          order: {
+            OR: [
+              { reservationId: { in: qaReservationIds } },
+              { guest: { fullName: { startsWith: "QA Guest" } } },
+            ],
+          },
+        },
+        { item: { name: { startsWith: "QA Adventure" } } },
+      ],
     },
   });
   await prisma.order.deleteMany({
@@ -81,6 +92,8 @@ async function cleanupDatabase() {
         { description: { contains: "QA Guest" } },
         { description: { contains: "QA Linen Refresh" } },
         { description: { contains: "QA Sunrise Picnic" } },
+        { description: { contains: "QA Adventure" } },
+        { description: { contains: "QA-LF-" } },
         { description: { contains: "QA Welcome" } },
       ],
     },
@@ -103,9 +116,12 @@ async function cleanupDatabase() {
       OR: [
         { name: { startsWith: "Media Test" } },
         { name: { startsWith: "Capacity Test" } },
+        { name: { startsWith: "QA Adventure" } },
       ],
     },
   });
+  await prisma.housekeepingTask.deleteMany({ where: { unit: { code: { startsWith: "QA-LF-" } } } });
+  await prisma.unit.deleteMany({ where: { code: { startsWith: "QA-LF-" } } });
   await prisma.$disconnect();
 }
 

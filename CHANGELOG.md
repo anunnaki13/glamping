@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.4 - Front Office Lifecycle QA
+
+- Added end-to-end coverage for guest reservation lifecycle: check-in, activity order creation, order payment/status update, check-out, and housekeeping handoff.
+- Added isolated E2E lifecycle fixtures for temporary QA units and adventure items.
+- Extended E2E cleanup to remove lifecycle units, activity items, checkout cleaning tasks, and related QA records after each run.
+
 ## 0.18.3 - Operational Workflow QA
 
 - Added E2E coverage for creating a guest and confirmed reservation with live Rupiah formatting.
