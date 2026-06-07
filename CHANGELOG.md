@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.3 - Operational Workflow QA
+
+- Added E2E coverage for creating a guest and confirmed reservation with live Rupiah formatting.
+- Added E2E coverage for creating and transitioning housekeeping tasks.
+- Added E2E coverage for creating and assigning service requests.
+- Added E2E coverage for creating active WhatsApp message templates.
+
 ## 0.18.2 - Module UI Consistency QA
 
 - Added cross-module E2E coverage for page-level overflow across primary operational modules.
