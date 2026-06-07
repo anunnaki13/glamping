@@ -13,6 +13,6 @@ test("invalid catalog submission returns to the workflow with an error banner", 
 test("invalid calendar start date renders feedback without breaking the board", async ({ context, page, request }) => {
   await loginViaApi(request, context);
   await page.goto("/calendar?start=bad-date");
-  await expect(page.getByRole("alert")).toContainText("Tanggal awal calendar tidak valid");
+  await expect(page.getByRole("alert").filter({ hasText: "Tanggal awal calendar tidak valid" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
 });

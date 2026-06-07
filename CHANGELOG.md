@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.2 - Module UI Consistency QA
+
+- Added cross-module E2E coverage for page-level overflow across primary operational modules.
+- Added E2E coverage for live Rupiah thousands formatting on money inputs.
+- Refined unit quick status actions so Maintenance and Mark Ready use distinct action colors.
+- Re-ran browser route audit for desktop and mobile module surfaces with no page-level overflow or panel overlap findings.
+
 ## 0.18.1 - UI Status And Currency Polish
 
 - Expanded status badge tones so operational statuses are easier to distinguish across reservations, units, housekeeping, service requests, orders, payments, and dashboard surfaces.

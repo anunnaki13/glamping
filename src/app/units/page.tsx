@@ -116,6 +116,11 @@ export default async function UnitsPage({ searchParams }: UnitsPageProps) {
             const nextReservation = unit.reservations[0];
             const statusAction = updateUnitStatusAction.bind(null, unit.id);
             const canQuickToggleStatus = canWrite && unit.status !== UnitStatus.OCCUPIED;
+            const nextStatus = unit.status === UnitStatus.READY ? UnitStatus.MAINTENANCE : UnitStatus.READY;
+            const quickStatusButtonClass =
+              nextStatus === UnitStatus.MAINTENANCE
+                ? "min-h-10 w-full rounded-[16px] border border-amber-300/24 bg-amber-500/12 px-3 text-sm font-bold text-amber-100 transition hover:bg-amber-500/18"
+                : "min-h-10 w-full rounded-[16px] border border-emerald-300/24 bg-emerald-500/12 px-3 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/18";
 
             return (
               <GlassCard key={unit.id} variant="strong" className="overflow-hidden p-0 transition hover:-translate-y-0.5">
@@ -163,8 +168,8 @@ export default async function UnitsPage({ searchParams }: UnitsPageProps) {
                     </Link>
                     {canQuickToggleStatus ? (
                       <form action={statusAction} className="flex flex-1">
-                        <input type="hidden" name="status" value={unit.status === UnitStatus.READY ? UnitStatus.MAINTENANCE : UnitStatus.READY} />
-                        <button className="min-h-10 w-full rounded-[16px] border border-[#29f1ff]/22 bg-[#29f1ff]/10 px-3 text-sm font-bold text-[#b8fbff] transition hover:bg-[#29f1ff]/16">
+                        <input type="hidden" name="status" value={nextStatus} />
+                        <button className={quickStatusButtonClass}>
                           {unit.status === UnitStatus.READY ? "Maintenance" : "Mark Ready"}
                         </button>
                       </form>
