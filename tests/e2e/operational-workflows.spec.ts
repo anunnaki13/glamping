@@ -1,5 +1,17 @@
 import { expect, type TestInfo, test } from "@playwright/test";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { expectNoPageOverflow, loginViaApi } from "./helpers";
+
+const execFileAsync = promisify(execFile);
+
+test.beforeEach(async () => {
+  await cleanupOperationalTestArtifacts();
+});
+
+test.afterEach(async () => {
+  await cleanupOperationalTestArtifacts();
+});
 
 function uniqueSuffix(testInfo: TestInfo) {
   return `${testInfo.project.name}-${Date.now().toString(36)}-${testInfo.workerIndex}`.replace(/[^a-z0-9-]/gi, "");
@@ -85,6 +97,11 @@ test("housekeeping can create a task and move it into progress", async ({ contex
   await page.waitForURL(/\/housekeeping\?actionStatus=success/);
   const progressedTaskCard = page.locator("article", { hasText: taskType }).first();
   await expect(progressedTaskCard.locator('select[name="status"]')).toHaveValue("IN_PROGRESS");
+
+  await progressedTaskCard.getByRole("button", { name: "Ready" }).click();
+  await page.waitForURL(/\/housekeeping\?actionStatus=success/);
+  const readyTaskCard = page.locator("article", { hasText: taskType }).first();
+  await expect(readyTaskCard.locator('select[name="status"]')).toHaveValue("READY");
 });
 
 test("service team can create and assign a guest request", async ({ context, page, request }, testInfo) => {
@@ -130,3 +147,10 @@ test("messages can create an active WhatsApp template", async ({ context, page, 
   await expect(page.locator("form", { hasText: templateName }).first()).toBeVisible();
   await expectNoPageOverflow(page);
 });
+
+async function cleanupOperationalTestArtifacts() {
+  await execFileAsync("npx", ["tsx", "tests/e2e/cleanup-media-artifacts.ts"], {
+    cwd: process.cwd(),
+    timeout: 30_000,
+  });
+}

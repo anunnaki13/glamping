@@ -3,6 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { PrismaClient } from "../../src/generated/prisma/client";
+import { ReservationStatus, UnitStatus } from "../../src/generated/prisma/enums";
 
 async function main() {
   await cleanupDatabase();
@@ -17,6 +18,85 @@ async function cleanupDatabase() {
   }
 
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  const qaHousekeepingTasks = await prisma.housekeepingTask.findMany({
+    where: { taskType: { startsWith: "QA Linen Refresh" } },
+    select: { id: true, unitId: true },
+  });
+  const qaUnitIds = [...new Set(qaHousekeepingTasks.map((task) => task.unitId))];
+  const qaReservations = await prisma.reservation.findMany({
+    where: { guest: { fullName: { startsWith: "QA Guest" } } },
+    select: { id: true },
+  });
+  const qaReservationIds = qaReservations.map((reservation) => reservation.id);
+
+  await prisma.serviceRequest.deleteMany({
+    where: {
+      OR: [
+        { title: { startsWith: "QA Sunrise Picnic" } },
+        { guest: { fullName: { startsWith: "QA Guest" } } },
+        { reservationId: { in: qaReservationIds } },
+      ],
+    },
+  });
+  await prisma.paymentTransaction.deleteMany({ where: { reservationId: { in: qaReservationIds } } });
+  await prisma.orderItem.deleteMany({
+    where: {
+      order: {
+        OR: [
+          { reservationId: { in: qaReservationIds } },
+          { guest: { fullName: { startsWith: "QA Guest" } } },
+        ],
+      },
+    },
+  });
+  await prisma.order.deleteMany({
+    where: {
+      OR: [
+        { reservationId: { in: qaReservationIds } },
+        { guest: { fullName: { startsWith: "QA Guest" } } },
+      ],
+    },
+  });
+  await prisma.communicationLog.updateMany({
+    where: {
+      OR: [
+        { reservationId: { in: qaReservationIds } },
+        { guest: { fullName: { startsWith: "QA Guest" } } },
+        { template: { name: { startsWith: "QA Welcome" } } },
+      ],
+    },
+    data: {
+      guestId: null,
+      reservationId: null,
+      templateId: null,
+    },
+  });
+  await prisma.reservation.deleteMany({ where: { id: { in: qaReservationIds } } });
+  await prisma.guest.deleteMany({ where: { fullName: { startsWith: "QA Guest" } } });
+  await prisma.housekeepingTask.deleteMany({ where: { id: { in: qaHousekeepingTasks.map((task) => task.id) } } });
+  await prisma.messageTemplate.deleteMany({ where: { name: { startsWith: "QA Welcome" } } });
+  await prisma.activityLog.deleteMany({
+    where: {
+      OR: [
+        { description: { contains: "QA Guest" } },
+        { description: { contains: "QA Linen Refresh" } },
+        { description: { contains: "QA Sunrise Picnic" } },
+        { description: { contains: "QA Welcome" } },
+      ],
+    },
+  });
+
+  if (qaUnitIds.length > 0) {
+    await prisma.unit.updateMany({
+      where: {
+        id: { in: qaUnitIds },
+        status: UnitStatus.CLEANING,
+        reservations: { none: { status: ReservationStatus.CHECKED_IN } },
+      },
+      data: { status: UnitStatus.READY },
+    });
+  }
+
   await prisma.order.deleteMany({ where: { code: { startsWith: "E2E-CAP-" } } });
   await prisma.posItem.deleteMany({
     where: {

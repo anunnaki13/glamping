@@ -6,6 +6,7 @@
 - Added E2E coverage for creating and transitioning housekeeping tasks.
 - Added E2E coverage for creating and assigning service requests.
 - Added E2E coverage for creating active WhatsApp message templates.
+- Extended E2E cleanup so operational workflow QA data is removed after each run.
 
 ## 0.18.2 - Module UI Consistency QA
 
