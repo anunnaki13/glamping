@@ -4,7 +4,11 @@ export const e2eBaseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000";
 
 export const demoUsers = {
   owner: "owner@nusaescape.local",
+  manager: "manager@nusaescape.local",
+  frontOffice: "frontoffice@nusaescape.local",
+  housekeeping: "housekeeping@nusaescape.local",
   fnb: "fnb@nusaescape.local",
+  viewer: "qa-viewer@nusaescape.local",
 } as const;
 
 export const demoPassword = "password123";

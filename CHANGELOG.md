@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.5 - Role Access QA
+
+- Added role-by-role E2E coverage for owner, front office, housekeeping, F&B/activity, and read-only viewer module access.
+- Added E2E coverage for sensitive financial and guest-contact visibility across operational roles.
+- Added E2E coverage for read-only versus specialist write controls in reservations, orders, catalog, and housekeeping.
+- Added a temporary viewer QA fixture with automatic cleanup so access tests do not leave demo data behind.
+
 ## 0.18.4 - Front Office Lifecycle QA
 
 - Added end-to-end coverage for guest reservation lifecycle: check-in, activity order creation, order payment/status update, check-out, and housekeeping handoff.
